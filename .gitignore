@@ -1,0 +1,15 @@
+# build artefacts / caches
+build/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# local copies of the official PDF (kept out of git, the tools download it)
+Muellkalender*.pdf
+
+# editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

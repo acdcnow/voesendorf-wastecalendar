@@ -1,0 +1,603 @@
+{
+ "year": 2026,
+ "municipality": "Marktgemeinde Vösendorf, 2331 Vösendorf, Schlossplatz 1",
+ "sources": {
+  "info_page": "https://voesendorf.gv.at/buergerservice/muellkalender/",
+  "pdf": "https://voesendorf.gv.at/wp-content/uploads/2021/09/Muellkalender-2026_web.pdf",
+  "street_geometry": "OpenStreetMap (ODbL) via Overpass API"
+ },
+ "generated": "2026-09-20",
+ "legend": {
+  "RM": {
+   "name": "Restmüll",
+   "short": "RM",
+   "interval": "14-tägig",
+   "description": "Restmülltonne, 14-tägige Abholung"
+  },
+  "RM4": {
+   "name": "Restmüll (4-wöchig)",
+   "short": "RM4",
+   "interval": "4-wöchig",
+   "description": "Restmülltonne mit 4-wöchigem Rhythmus; wird am selben Tag wie die 14-tägige Sammlung abgeholt"
+  },
+  "Bio": {
+   "name": "Biomüll",
+   "short": "Bio",
+   "interval": "14-tägig / wöchentlich",
+   "description": "14-tägig im Winter, wöchentlich vom Frühjahr bis Ende September"
+  }
+ },
+ "zones": {
+  "oberort": {
+   "name": "Oberort",
+   "description": "Nördlicher/westlicher Ortsteil, Triester Straße, Haidfeld- und Kalesasiedlung",
+   "weekday": {
+    "RM": "Tue",
+    "RM4": "Tue",
+    "Bio": "Wed"
+   },
+   "colours": {
+    "RM": "#f0a000",
+    "RM4": "#a78bfa",
+    "Bio": "#7cb342"
+   },
+   "streets": [
+    "Am Haidegrund",
+    "Am Petersbach",
+    "Baslergasse",
+    "Böheimgasse",
+    "Doktor-Robert-Firneis-Straße",
+    "Dr. Karl Renner-Gasse",
+    "Dr. Pertich-Gasse",
+    "Franz Gruber-Gasse",
+    "Franz Schubert-Gasse",
+    "Franz Spiegel-Gasse",
+    "Fritz Schmerold-Gasse",
+    "Haidfeldstraße",
+    "Heinrich Tröber-Gasse",
+    "Jakob Janisch-Gasse",
+    "Karl Weiss-Gasse",
+    "Konsumstraße",
+    "Leopold Mandl-Gasse",
+    "Marktstraße",
+    "Mitterberggasse",
+    "Raimundgasse",
+    "Rossödengasse",
+    "Schweizer Gasse",
+    "Sperlinggasse",
+    "Stefan Brauneder-Gasse",
+    "Leopold Stipcak-Gasse",
+    "Triester Straße",
+    "Weinberggasse",
+    "Willi Hafenscher-Gasse",
+    "Haidfeldsiedlung",
+    "Kalesasiedlung",
+    "Roseggersiedlung"
+   ],
+   "split_streets": {
+    "Ortsstraße": "Badner Bahn bis Pizzeria Fontana",
+    "Schönbrunner Allee": "Pizzeria Fontana bis Badner Bahn"
+   },
+   "containers": [
+    {
+     "container": "Grünschnittcontainer",
+     "places": [
+      "Franz Spiegel-Gasse",
+      "Konsumstraße",
+      "Mitterberggasse"
+     ]
+    }
+   ],
+   "notes": [
+    "Kein Müllinsel-Standort im Abfuhrgebiet Oberort."
+   ],
+   "dates": {
+    "RM": [
+     "2026-01-13",
+     "2026-01-27",
+     "2026-02-10",
+     "2026-02-24",
+     "2026-03-10",
+     "2026-03-24",
+     "2026-04-07",
+     "2026-04-21",
+     "2026-05-05",
+     "2026-05-19",
+     "2026-06-02",
+     "2026-06-16",
+     "2026-06-30",
+     "2026-07-14",
+     "2026-07-28",
+     "2026-08-11",
+     "2026-08-25",
+     "2026-09-08",
+     "2026-09-22",
+     "2026-10-06",
+     "2026-10-20",
+     "2026-11-03",
+     "2026-11-17",
+     "2026-12-01",
+     "2026-12-15",
+     "2026-12-29"
+    ],
+    "RM4": [
+     "2026-01-13",
+     "2026-02-10",
+     "2026-03-10",
+     "2026-04-07",
+     "2026-05-05",
+     "2026-06-02",
+     "2026-06-30",
+     "2026-07-28",
+     "2026-08-25",
+     "2026-09-22",
+     "2026-10-20",
+     "2026-11-17",
+     "2026-12-15"
+    ],
+    "Bio": [
+     "2026-01-14",
+     "2026-01-28",
+     "2026-02-11",
+     "2026-02-25",
+     "2026-03-11",
+     "2026-03-25",
+     "2026-04-08",
+     "2026-04-22",
+     "2026-04-29",
+     "2026-05-06",
+     "2026-05-13",
+     "2026-05-20",
+     "2026-05-27",
+     "2026-06-03",
+     "2026-06-10",
+     "2026-06-17",
+     "2026-06-24",
+     "2026-07-01",
+     "2026-07-08",
+     "2026-07-15",
+     "2026-07-22",
+     "2026-07-29",
+     "2026-08-05",
+     "2026-08-12",
+     "2026-08-19",
+     "2026-08-26",
+     "2026-09-02",
+     "2026-09-09",
+     "2026-09-16",
+     "2026-09-23",
+     "2026-09-30",
+     "2026-10-14",
+     "2026-10-28",
+     "2026-11-11",
+     "2026-11-25",
+     "2026-12-09",
+     "2026-12-23"
+    ]
+   }
+  },
+  "unterort": {
+   "name": "Unterort",
+   "description": "Südöstlicher Ortsteil rund um Schlossplatz, Laxenburger Straße und Roßdorfstraße",
+   "weekday": {
+    "RM": "Tue",
+    "RM4": "Tue",
+    "Bio": "Wed"
+   },
+   "colours": {
+    "RM": "#f0a000",
+    "RM4": "#a78bfa",
+    "Bio": "#7cb342"
+   },
+   "streets": [
+    "Bachgasse",
+    "Birkenweg",
+    "Brunnerweg",
+    "Föhrengasse",
+    "Freiheitsstraße",
+    "Hutweidenweg",
+    "Jordanstraße",
+    "Kindbergstraße",
+    "Klausengasse",
+    "Laxenburger Straße",
+    "Lindengasse",
+    "Meisengasse",
+    "Mühlfeldgasse",
+    "Mühlgasse",
+    "Roßdorfstraße",
+    "Schlossplatz",
+    "Taubengasse",
+    "Zeisiggasse",
+    "Jordansiedlung",
+    "Tröbersiedlung"
+   ],
+   "split_streets": {
+    "Ortsstraße": "Pizzeria Fontana bis Laxenburger Straße",
+    "Schönbrunner Allee": "Pizzeria Fontana bis Tröbersiedlung"
+   },
+   "containers": [
+    {
+     "container": "Grünschnittcontainer",
+     "places": [
+      "Brunnerweg",
+      "Badgasse",
+      "Friedhof",
+      "Lindengasse",
+      "Schloss/Parkplatz",
+      "Schönbrunner Allee",
+      "NÖ Pflege- und Betreuungszentrum"
+     ]
+    }
+   ],
+   "notes": [],
+   "dates": {
+    "RM": [
+     "2026-01-07",
+     "2026-01-20",
+     "2026-02-03",
+     "2026-02-17",
+     "2026-03-03",
+     "2026-03-17",
+     "2026-03-31",
+     "2026-04-14",
+     "2026-04-28",
+     "2026-05-12",
+     "2026-05-26",
+     "2026-06-09",
+     "2026-06-23",
+     "2026-07-07",
+     "2026-07-21",
+     "2026-08-04",
+     "2026-08-18",
+     "2026-09-01",
+     "2026-09-15",
+     "2026-09-29",
+     "2026-10-13",
+     "2026-10-27",
+     "2026-11-10",
+     "2026-11-24",
+     "2026-12-07",
+     "2026-12-22"
+    ],
+    "RM4": [
+     "2026-01-20",
+     "2026-02-17",
+     "2026-03-17",
+     "2026-04-14",
+     "2026-05-12",
+     "2026-06-09",
+     "2026-07-07",
+     "2026-08-04",
+     "2026-09-01",
+     "2026-09-29",
+     "2026-10-27",
+     "2026-11-24",
+     "2026-12-22"
+    ],
+    "Bio": [
+     "2026-01-14",
+     "2026-01-28",
+     "2026-02-11",
+     "2026-02-25",
+     "2026-03-11",
+     "2026-03-25",
+     "2026-04-08",
+     "2026-04-22",
+     "2026-04-29",
+     "2026-05-06",
+     "2026-05-13",
+     "2026-05-20",
+     "2026-05-27",
+     "2026-06-03",
+     "2026-06-10",
+     "2026-06-17",
+     "2026-06-24",
+     "2026-07-01",
+     "2026-07-08",
+     "2026-07-15",
+     "2026-07-22",
+     "2026-07-29",
+     "2026-08-05",
+     "2026-08-12",
+     "2026-08-19",
+     "2026-08-26",
+     "2026-09-02",
+     "2026-09-09",
+     "2026-09-16",
+     "2026-09-23",
+     "2026-09-30",
+     "2026-10-14",
+     "2026-10-28",
+     "2026-11-11",
+     "2026-11-25",
+     "2026-12-09",
+     "2026-12-23"
+    ]
+   }
+  },
+  "seepark": {
+   "name": "Seepark",
+   "description": "Seeparksiedlung im Südosten (Seeparkstraße, Strandstraße, Seeweg)",
+   "weekday": {
+    "RM": "Mon",
+    "RM4": "Mon",
+    "Bio": "Tue"
+   },
+   "colours": {
+    "RM": "#f0a000",
+    "RM4": "#a78bfa",
+    "Bio": "#7cb342"
+   },
+   "streets": [
+    "Fischerstraße",
+    "Seeparkstraße",
+    "Seeweg",
+    "Strandstraße",
+    "Zum Anningerblick",
+    "Seeparksiedlung"
+   ],
+   "split_streets": {},
+   "containers": [
+    {
+     "container": "Grünschnittcontainer",
+     "places": [
+      "Seepark/Spitz"
+     ]
+    },
+    {
+     "container": "Müllinseln",
+     "places": [
+      "Benyasiedlung"
+     ]
+    },
+    {
+     "container": "Grünschnittcontainer Benyasiedlung",
+     "places": [
+      "Neuer Standort folgt 2026"
+     ]
+    }
+   ],
+   "notes": [
+    "Die Gemeinde-Website nennt das Seepark-Viertel noch nicht; dort ist die Seeparksiedlung nicht als eigenes Abfuhrgebiet angeführt.",
+    "Die Benyasiedlung (Anton-Benya-Straße) wird auf der Seepark-Seite des Kalenders nur wegen der Müllinseln genannt - laut Gemeinde-Website zählt die Anton-Benya-Straße zum Abfuhrgebiet Oberort."
+   ],
+   "dates": {
+    "RM": [
+     "2026-01-05",
+     "2026-01-19",
+     "2026-02-02",
+     "2026-02-16",
+     "2026-03-02",
+     "2026-03-16",
+     "2026-03-30",
+     "2026-04-13",
+     "2026-04-27",
+     "2026-05-11",
+     "2026-05-26",
+     "2026-06-08",
+     "2026-06-22",
+     "2026-07-06",
+     "2026-07-20",
+     "2026-08-03",
+     "2026-08-17",
+     "2026-08-31",
+     "2026-09-14",
+     "2026-09-28",
+     "2026-10-12",
+     "2026-10-27",
+     "2026-11-09",
+     "2026-11-23",
+     "2026-12-07",
+     "2026-12-21"
+    ],
+    "RM4": [
+     "2026-01-05",
+     "2026-02-02",
+     "2026-03-02",
+     "2026-03-30",
+     "2026-04-27",
+     "2026-05-26",
+     "2026-06-22",
+     "2026-07-20",
+     "2026-08-17",
+     "2026-09-14",
+     "2026-10-12",
+     "2026-11-09",
+     "2026-12-07"
+    ],
+    "Bio": [
+     "2026-01-13",
+     "2026-01-27",
+     "2026-02-10",
+     "2026-02-24",
+     "2026-03-10",
+     "2026-03-24",
+     "2026-04-07",
+     "2026-04-21",
+     "2026-04-28",
+     "2026-05-05",
+     "2026-05-12",
+     "2026-05-19",
+     "2026-05-26",
+     "2026-06-02",
+     "2026-06-09",
+     "2026-06-16",
+     "2026-06-23",
+     "2026-06-30",
+     "2026-07-07",
+     "2026-07-14",
+     "2026-07-21",
+     "2026-07-28",
+     "2026-08-04",
+     "2026-08-11",
+     "2026-08-18",
+     "2026-08-25",
+     "2026-09-01",
+     "2026-09-08",
+     "2026-09-15",
+     "2026-09-22",
+     "2026-09-29",
+     "2026-10-13",
+     "2026-10-27",
+     "2026-11-10",
+     "2026-11-24",
+     "2026-12-09",
+     "2026-12-22"
+    ]
+   }
+  }
+ },
+ "holidays": [
+  {
+   "date": "2026-01-01",
+   "name": "Neujahr"
+  },
+  {
+   "date": "2026-01-06",
+   "name": "Heilige Drei Könige"
+  },
+  {
+   "date": "2026-04-03",
+   "name": "Karfreitag"
+  },
+  {
+   "date": "2026-04-06",
+   "name": "Ostermontag"
+  },
+  {
+   "date": "2026-05-01",
+   "name": "Staatsfeiertag"
+  },
+  {
+   "date": "2026-05-14",
+   "name": "Christi Himmelfahrt"
+  },
+  {
+   "date": "2026-05-25",
+   "name": "Pfingstmontag"
+  },
+  {
+   "date": "2026-06-04",
+   "name": "Fronleichnam"
+  },
+  {
+   "date": "2026-10-26",
+   "name": "Nationalfeiertag"
+  },
+  {
+   "date": "2026-11-01",
+   "name": "Allerheiligen"
+  },
+  {
+   "date": "2026-12-08",
+   "name": "Mariä Empfängnis"
+  },
+  {
+   "date": "2026-12-25",
+   "name": "Christtag"
+  },
+  {
+   "date": "2026-12-26",
+   "name": "Stefanitag"
+  }
+ ],
+ "no_collection_hints": [
+  {
+   "date": "2026-02-17",
+   "name": "Faschingsdienstag"
+  },
+  {
+   "date": "2026-11-02",
+   "name": "Allerseelen"
+  },
+  {
+   "date": "2026-11-15",
+   "name": "Leopolditag"
+  },
+  {
+   "date": "2026-12-24",
+   "name": "Heiliger Abend"
+  },
+  {
+   "date": "2026-12-31",
+   "name": "Silvester"
+  }
+ ],
+ "extras": {
+  "asz": {
+   "name": "Altstoffsammelzentrum (ASZ)",
+   "hours": {
+    "Montag bis Donnerstag": "10:00 - 15:00",
+    "Freitag": "10:00 - 12:00",
+    "Samstag": "08:00 - 12:00"
+   },
+   "note": "Letzte Einfahrt 15 Minuten vor Betriebsschluss. Ohne Entsorgungskarte und nur für Vösendorfer Haushalte.",
+   "closed": [
+    {
+     "date": "2026-02-17",
+     "label": "Faschingsdienstag"
+    },
+    {
+     "date": "2026-04-03",
+     "label": "Karfreitag"
+    },
+    {
+     "date": "2026-11-02",
+     "label": "Allerseelen"
+    },
+    {
+     "date": "2026-11-15",
+     "label": "Leopolditag"
+    },
+    {
+     "date": "2026-12-24",
+     "label": "Heiliger Abend"
+    },
+    {
+     "date": "2026-12-31",
+     "label": "Silvester"
+    }
+   ],
+   "closed_note": "und an allen gesetzlichen Feiertagen"
+  },
+  "sperrmuell": {
+   "name": "Sperrmüllabholung",
+   "note": "Einmal pro Jahr nach telefonischer Terminvereinbarung unter 01/699 03-35, Abholung an der Grundstücksgrenze.",
+   "not_collected": [
+    "Bauschutt",
+    "Flüssigkeiten/Problemstoffe",
+    "Grünschnitt",
+    "Plastik",
+    "Kartonagen",
+    "Sperrmüll von Mehrparteienhäusern"
+   ]
+  },
+  "blumenerde": {
+   "name": "Blumenerde-Aktion 2026",
+   "events": [
+    {
+     "date": "2026-04-11",
+     "time": "10:00 - 13:00",
+     "place": "Feuerwehrhaus, Karglhaus, Benyasiedlung"
+    },
+    {
+     "date": "2026-05-09",
+     "time": "10:00 - 13:00",
+     "place": "Feuerwehrhaus, Karglhaus, Benyasiedlung"
+    },
+    {
+     "date": "2026-04-18",
+     "time": "10:00 - 13:00",
+     "place": "Feuerwehrhaus, Karglhaus, Benyasiedlung",
+     "replacement": true
+    },
+    {
+     "date": "2026-05-16",
+     "time": "10:00 - 13:00",
+     "place": "Feuerwehrhaus, Karglhaus, Benyasiedlung",
+     "replacement": true
+    }
+   ]
+  }
+ }
+}

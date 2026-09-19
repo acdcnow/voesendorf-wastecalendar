@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>voesendorf-waste-card · Vorschau</title>
+  <style>
+    :root {
+      --primary-color: #03a9f4;
+      --primary-text-color: #212121;
+      --secondary-text-color: #727272;
+      --divider-color: #e0e0e0;
+      --card-background-color: #ffffff;
+      --secondary-background-color: #f4f4f4;
+      --ha-card-border-radius: 12px;
+      --ha-card-box-shadow: 0 2px 6px rgba(0,0,0,.12);
+    }
+    body { margin: 0; padding: 24px; background: #eceff1;
+           font-family: "Segoe UI", Roboto, sans-serif; }
+    ha-card { display: block; background: var(--card-background-color);
+              border-radius: var(--ha-card-border-radius); box-shadow: var(--ha-card-box-shadow); }
+    #errors { margin-bottom: 16px; padding: 12px; border-radius: 8px; background: #ffebee;
+              color: #b71c1c; font-family: monospace; font-size: 13px; white-space: pre-wrap; }
+    #errors.ok { background: #e8f5e9; color: #1b5e20; }
+    .toolbar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+    .toolbar button { padding: 8px 12px; border-radius: 6px; border: 1px solid #cfd8dc;
+                      background: #fff; cursor: pointer; }
+    #card { max-width: 900px; }
+  </style>
+</head>
+<body>
+  <div id="errors" class="ok">noch keine Fehler …</div>
+  <div class="toolbar">
+    <button data-zone="oberort">Oberort</button>
+    <button data-zone="unterort">Unterort</button>
+    <button data-zone="seepark">Seepark</button>
+    <button data-street="Ortsstraße 71">Ortsstraße (geteilt)</button>
+    <button data-street="Anton-Benya-Straße">Anton-Benya-Straße</button>
+    <button data-zone="">Alle Bereiche</button>
+  </div>
+  <div id="card"></div>
+
+  <script>
+    const errors = document.getElementById("errors");
+    const report = (text) => {
+      errors.classList.remove("ok");
+      errors.textContent += "\n" + text;
+    };
+    window.addEventListener("error", (event) => report("ERROR: " + event.message));
+    window.addEventListener("unhandledrejection", (event) => report("REJECTION: " + event.reason));
+    const originalError = console.error;
+    console.error = (...args) => { report("console.error: " + args.join(" ")); originalError(...args); };
+  </script>
+  <script type="module" src="../dist/voesendorf-waste-card.js"></script>
+  <script type="module">
+    const hass = {
+      locale: { language: "de" },
+      language: "de",
+      states: {},
+      callService: () => Promise.resolve(),
+    };
+    const card = document.createElement("voesendorf-waste-card");
+    card.setConfig({ type: "custom:voesendorf-waste-card", zone: "oberort" });
+    card.hass = hass;
+    document.getElementById("card").appendChild(card);
+
+    document.querySelectorAll(".toolbar button").forEach((button) => {
+      button.addEventListener("click", () => {
+        const next = document.createElement("voesendorf-waste-card");
+        const config = { type: "custom:voesendorf-waste-card" };
+        if (button.dataset.zone) config.zone = button.dataset.zone;
+        else config.zone = "auto";
+        if (button.dataset.street) config.street = button.dataset.street;
+        next.setConfig(config);
+        next.hass = hass;
+        const host = document.getElementById("card");
+        host.innerHTML = "";
+        host.appendChild(next);
+      });
+    });
+  </script>
+</body>
+</html>
