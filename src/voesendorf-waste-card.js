@@ -43,6 +43,11 @@ const LEAFLET = {
   ],
 };
 
+// Raster tiles served by the Home Assistant instance itself (map_tiles proxy).
+// The proxy refuses requests without the rotating access token, and Leaflet
+// substitutes the `token` layer option into the template.
+const HA_TILES_PATH = "/api/map_tiles/raster/{z}/{x}/{y}.png?token={token}";
+
 const STRINGS = {
   de: {
     next: "Nächste Abholungen",
@@ -61,6 +66,7 @@ const STRINGS = {
     mapLoading: "Karte wird geladen …",
     mapAttribution: "Eigene Darstellung auf Basis von OpenStreetMap-Daten (ODbL)",
     mapAttributionTiles: "Kacheln: {provider}",
+    mapAttributionHa: "Kacheln über den Home-Assistant-Kartenproxy (OpenStreetMap)",
     mapOffline: "ohne Kartenkacheln",
     mapTilesBlocked:
       "Der Kachelserver hat die Anfragen blockiert (tile.openstreetmap.org ist nicht für eingebettete Karten gedacht). Es wird die Offline-Karte ohne Kacheln angezeigt.",
@@ -101,6 +107,7 @@ const STRINGS = {
     mapLoading: "Loading map …",
     mapAttribution: "Own rendering based on OpenStreetMap data (ODbL)",
     mapAttributionTiles: "Tiles: {provider}",
+    mapAttributionHa: "Tiles via the Home Assistant map tile proxy (OpenStreetMap)",
     mapOffline: "no map tiles",
     mapTilesBlocked:
       "The tile server blocked the requests (tile.openstreetmap.org is not meant for embedded maps). Showing the tile-less offline map instead.",
@@ -289,6 +296,9 @@ class VoesendorfWasteCard extends HTMLElement {
     this._street = null;
     this._map = null;
     this._layers = {};
+    this._tileMode = null;
+    this._darkTiles = false;
+    this._haToken = "";
     this._renderedHash = null;
     this._showSettings = false;
     this._streetsIndex = streetIndex(SCHEDULE);
@@ -314,6 +324,7 @@ class VoesendorfWasteCard extends HTMLElement {
       tile_url: "",            // empty = offline map, no requests to any tile server
       tile_attribution: "",
       tile_fallback: true,     // switch to the offline map if tiles are blocked
+      tile_source: "",         // "" = offline | "ha" = tiles proxied by Home Assistant | "custom"
       ...config,
       zone,
     };
@@ -335,6 +346,11 @@ class VoesendorfWasteCard extends HTMLElement {
     if (first || this._today !== today) {
       this._today = today;
       this._render();
+    }
+    const dark = Boolean(hass && hass.themes && hass.themes.darkMode);
+    if (this._tileMode && dark !== this._darkTiles) {
+      const container = this.shadowRoot.getElementById("map");
+      if (container) this._syncTileTheme(container);
     }
   }
 
@@ -447,7 +463,8 @@ class VoesendorfWasteCard extends HTMLElement {
   _hash() {
     return JSON.stringify([this._zone, this._street, this._lang, this._today,
                            this._config.show_map, this._config.show_extras,
-                           this._config.tile_url, this._config.map_height,
+                           this._config.tile_url, this._config.tile_source,
+                           this._config.map_height,
                            this._showSettings, this._config.show_types]);
   }
 
@@ -530,6 +547,10 @@ class VoesendorfWasteCard extends HTMLElement {
         /* the offline map has no fixed aspect, so it may use more vertical space */
         #map.offline { height: auto; }
         #map.offline svg { height: auto; max-height: var(--map-max-height, 640px); }
+        /* the raster tiles are inverted in dark mode, exactly like the built-in map */
+        #map.dark-tiles .leaflet-tile {
+          filter: invert(.9) hue-rotate(170deg) brightness(1.5) contrast(1.2) saturate(.3);
+        }
         .zone-label { font-size: 26px; font-weight: 600; text-anchor: middle;
                       fill: var(--primary-text-color); fill-opacity: .55; }
         .map-foot { display: block; margin-top: 6px; font-size: .72rem;
@@ -824,14 +845,27 @@ class VoesendorfWasteCard extends HTMLElement {
       this._resizeObserver = null;
     }
     // Default: no external requests at all. tile.openstreetmap.org is not intended for
-    // embedded maps and blocks them, so tiles only load when tile_url is configured.
-    if (!this._config.tile_url) {
+    // embedded maps and blocks them, so tiles only load when they are asked for:
+    // either tile_source: ha (Home Assistant proxies and caches the OSM tiles behind a
+    // rotating token, sending the User-Agent OSM asks for) or a custom tile_url.
+    const source = this._tileSource();
+    if (source === "offline") {
       this._renderOfflineMap(container, zone, false);
       return;
     }
     container.classList.remove("offline");
     container.style.removeProperty("--map-max-height");
     container.innerHTML = `<div class="muted" style="padding:10px">${this._t("mapLoading")}</div>`;
+    let token = "";
+    if (source === "ha") {
+      try {
+        token = await this._haTilesToken(false);
+      } catch (error) {
+        // No proxy (older Home Assistant) or no connection: stay dependable.
+        this._renderOfflineMap(container, zone, false);
+        return;
+      }
+    }
     let L;
     try {
       L = await ensureLeaflet();
@@ -842,23 +876,43 @@ class VoesendorfWasteCard extends HTMLElement {
     this._leafletCss = await ensureLeafletCss();
     this._applyLeafletCss();
     container.innerHTML = "";
+    this._tileMode = source;
+    this._syncTileTheme(container);
 
-    const provider = this._config.tile_attribution || this._config.tile_url.split("/")[2] || "tiles";
+    const provider = this._config.tile_attribution ||
+      (this._config.tile_url.split("/")[2] || "tiles");
+    const attribution = source === "ha"
+      ? this._t("mapAttributionHa")
+      : this._t("mapAttributionTiles", { provider });
     const map = L.map(container, { scrollWheelZoom: false, attributionControl: true });
-    const layer = L.tileLayer(this._config.tile_url, {
-      maxZoom: 19,
-      attribution: this._t("mapAttributionTiles", { provider }) +
-        " &copy; OpenStreetMap contributors",
-    }).addTo(map);
-    const foot = this.shadowRoot.getElementById("map-foot");
-    if (foot) {
-      foot.innerHTML = `<span>${this._t("mapAttributionTiles", { provider })}` +
-        ` · &copy; OpenStreetMap contributors</span>`;
-    }
+    const layer = L.tileLayer(
+      source === "ha" ? `${location.origin}${HA_TILES_PATH}` : this._config.tile_url,
+      {
+        maxZoom: 19,
+        attribution: `${attribution} &copy; OpenStreetMap contributors`,
+        // Leaflet substitutes every option into the URL template, so the rotating
+        // proxy token can be swapped without recreating the layer.
+        token,
+      }).addTo(map);
+    this._renderMapFoot(zone, `${attribution} &copy; OpenStreetMap contributors`);
+
     let tileErrors = 0;
+    let tokenRetried = false;
     layer.on("tileerror", () => {
       tileErrors += 1;
-      if (tileErrors >= 3 && this._config.tile_fallback) {
+      if (tileErrors < 3) return;
+      if (source === "ha" && !tokenRetried) {
+        // Core rotates the token every 30 minutes, so a stale one is worth a retry.
+        tokenRetried = true;
+        tileErrors = 0;
+        this._haTilesToken(true).then((next) => {
+          if (!next) return;
+          layer.options.token = next;
+          layer.redraw();
+        }).catch(() => {});
+        return;
+      }
+      if (this._config.tile_fallback) {
         layer.off("tileerror");
         this._renderOfflineMap(container, zone, true);
       }
@@ -1021,7 +1075,9 @@ class VoesendorfWasteCard extends HTMLElement {
       });
 
     const centre = [(minY + maxY) / 2, (minX + maxX) / 2 / shrink];
+    this._tileMode = null;
     container.classList.add("offline");
+    container.classList.remove("dark-tiles");
     container.style.setProperty("--map-max-height",
       `${Math.max((this._config.map_height || 320) * 2, 480)}px`);
     container.innerHTML = `
@@ -1032,32 +1088,63 @@ class VoesendorfWasteCard extends HTMLElement {
         ${parts.join("")}
         ${labels.join("")}
       </svg>`;
-    const foot = this.shadowRoot.getElementById("map-foot");
-    if (foot) {
-      const legend = Object.entries(SCHEDULE.zones).map(([slug, info]) => {
-        const days = TYPE_ORDER.filter((type) => info.weekday?.[type])
-          .map((type) => `${SCHEDULE.legend[type].short}: ${this._weekdayName(info.weekday[type])}`)
-          .join(" · ");
-        return `<span class="zone-key${slug === zone.slug ? " active" : ""}" data-map-zone="${slug}">` +
-          `<span class="swatch" style="background:${ZONE_COLOURS[slug]}"></span>${info.name}` +
-          `<span class="muted">${days}</span></span>`;
-      }).join("");
-      foot.innerHTML = `
-        <div class="zone-legend">${legend}</div>
-        <div class="map-attr">
-          <span>${this._t("mapAttribution")} · ${this._t("mapOffline")}</span>
-          <a href="https://www.openstreetmap.org/#map=14/${centre[0].toFixed(5)}/${centre[1].toFixed(5)}"
-             target="_blank" rel="noopener">${this._t("openInOsm")}</a>
-        </div>`;
-      if (tilesBlocked) {
-        foot.insertAdjacentHTML("beforeend",
-          `<div class="notice" style="margin-top:4px">${this._t("mapTilesBlocked")}</div>`);
-      }
+    this._renderMapFoot(zone, `${this._t("mapAttribution")} · ${this._t("mapOffline")}`, {
+      link: `<a href="https://www.openstreetmap.org/#map=14/${centre[0].toFixed(5)}/${centre[1].toFixed(5)}"` +
+        ` target="_blank" rel="noopener">${this._t("openInOsm")}</a>`,
+      notice: tilesBlocked ? this._t("mapTilesBlocked") : "",
+    });
+  }
+
+  /** Tile mode requested by the configuration. */
+  _tileSource() {
+    if ((this._config.tile_source || "").toLowerCase() === "ha") return "ha";
+    if (this._config.tile_url) return "custom";
+    return "offline";
+  }
+
+  /**
+   * The built-in map does not load tiles from OpenStreetMap directly: core proxies
+   * and caches them and sends the identifying User-Agent that the OSM tile policy
+   * asks for, which a browser cannot send. Asking the instance for a token therefore
+   * gives us the same tiles without ever tripping the anti-abuse block.
+   */
+  async _haTilesToken(force) {
+    const connection = this._hass && this._hass.connection;
+    if (!connection || !connection.sendMessagePromise) {
+      throw new Error("Home Assistant connection unavailable");
     }
+    if (!force && this._haToken) return this._haToken;
+    const result = await connection.sendMessagePromise({ type: "map_tiles/access_token" });
+    this._haToken = (result && result.token) || "";
+    return this._haToken;
+  }
+
+  /** Raster tiles are inverted in dark mode, exactly like the built-in map does. */
+  _syncTileTheme(container) {
+    this._darkTiles = Boolean(this._hass && this._hass.themes && this._hass.themes.darkMode);
+    container.classList.toggle("dark-tiles", this._darkTiles);
+  }
+
+  /** Legend and attribution below the map, shared by the SVG and the tile map. */
+  _renderMapFoot(zone, attribution, options = {}) {
+    const foot = this.shadowRoot.getElementById("map-foot");
+    if (!foot) return;
+    const legend = Object.entries(SCHEDULE.zones).map(([slug, info]) => {
+      const days = TYPE_ORDER.filter((type) => info.weekday?.[type])
+        .map((type) => `${SCHEDULE.legend[type].short}: ${this._weekdayName(info.weekday[type])}`)
+        .join(" · ");
+      return `<span class="zone-key${slug === zone.slug ? " active" : ""}" data-map-zone="${slug}">` +
+        `<span class="swatch" style="background:${ZONE_COLOURS[slug]}"></span>${info.name}` +
+        `<span class="muted">${days}</span></span>`;
+    }).join("");
+    foot.innerHTML = `
+      <div class="zone-legend">${legend}</div>
+      <div class="map-attr"><span>${attribution}</span>${options.link || ""}</div>` +
+      (options.notice ? `<div class="notice" style="margin-top:4px">${options.notice}</div>` : "");
 
     this.shadowRoot.querySelectorAll("[data-map-zone]").forEach((node) => {
       const slug = node.dataset.mapZone;
-      if (SCHEDULE.zones[slug] && slug !== zone.slug) {
+      if (SCHEDULE.zones[slug] && slug !== this._zone) {
         node.style.cursor = "pointer";
         node.addEventListener("click", () => this._setZone(slug, true));
       }

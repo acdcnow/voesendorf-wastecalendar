@@ -1,0 +1,172 @@
+# Vösendorf: Standorte der Zusatzservices (ASZ, Blumenerde-Aktion, Müllinseln,
+# Grünschnittcontainer) für die Karte im Dashboard.
+#
+# Erzeugt von tools/fetch_places.py - nicht von Hand bearbeiten.
+#
+# Einbinden über configuration.yaml:
+#   homeassistant:
+#     packages: !include_dir_named packages
+#
+# Die Sensoren haben nur eine Aufgabe: sie tragen latitude/longitude als
+# Attribute, damit die eingebaute Kartenkarte (type: map) sie als Marker zeigt.
+template:
+  - sensor:
+      # Altstoffsammelzentrum
+      - name: "Altstoffsammelzentrum (ASZ)"
+        unique_id: voesendorf_place_asz
+        icon: mdi:recycle
+        state: "Gemeindegebiet"
+        attributes:
+          latitude: 48.12099
+          longitude: 16.348562
+          art: "Altstoffsammelzentrum"
+          bereich: "Gemeindegebiet"
+          hinweis: "Johannisweg 1 (Wirtschaftshof) - Mo-Do 10-15, Fr 10-12, Sa 8-12 Uhr"
+          quelle: "nominatim:Johannisweg 1, 2331 Vösendorf, Austria (Johannisweg)"
+      # Blumenerde-Aktion – Oberort
+      - name: "Blumenerde: Benyasiedlung"
+        unique_id: voesendorf_place_blumenerde_benyasiedlung
+        icon: mdi:flower
+        state: "Oberort"
+        attributes:
+          latitude: 48.115385
+          longitude: 16.312724
+          art: "Blumenerde-Aktion"
+          bereich: "Oberort"
+          hinweis: "Blumenerde-Aktion: 11.04. und 09.05., Ersatz 18.04. und 16.05., 10-13 Uhr"
+          quelle: "streets.geojson:Benyasiedlung"
+      # Blumenerde-Aktion
+      - name: "Blumenerde: Feuerwehrhaus"
+        unique_id: voesendorf_place_blumenerde_feuerwehrhaus
+        icon: mdi:flower
+        state: "Gemeindegebiet"
+        attributes:
+          latitude: 48.120864
+          longitude: 16.341161
+          art: "Blumenerde-Aktion"
+          bereich: "Gemeindegebiet"
+          hinweis: "Blumenerde-Aktion: 11.04. und 09.05., Ersatz 18.04. und 16.05., 10-13 Uhr"
+          quelle: "openstreetmap:way/37558159"
+      # Grünschnittcontainer – Unterort
+      - name: "Grünschnittcontainer Bachgasse"
+        unique_id: voesendorf_place_gruenschnitt_bachgasse
+        icon: mdi:tree
+        state: "Unterort"
+        attributes:
+          latitude: 48.119375
+          longitude: 16.345346
+          art: "Grünschnittcontainer"
+          bereich: "Unterort"
+          hinweis: "im PDF als \"Badgasse\" gedruckt, laut Gemeinde-Website Schlossplatz/Bachgasse"
+          quelle: "streets.geojson:Bachgasse"
+      # Grünschnittcontainer – Unterort
+      - name: "Grünschnittcontainer Brunnerweg"
+        unique_id: voesendorf_place_gruenschnitt_brunnerweg
+        icon: mdi:tree
+        state: "Unterort"
+        attributes:
+          latitude: 48.119822
+          longitude: 16.335541
+          art: "Grünschnittcontainer"
+          bereich: "Unterort"
+          quelle: "streets.geojson:Brunnerweg"
+      # Grünschnittcontainer – Oberort
+      - name: "Grünschnittcontainer Franz Spiegel-Gasse"
+        unique_id: voesendorf_place_gruenschnitt_franz_spiegel_gasse
+        icon: mdi:tree
+        state: "Oberort"
+        attributes:
+          latitude: 48.135303
+          longitude: 16.3262
+          art: "Grünschnittcontainer"
+          bereich: "Oberort"
+          quelle: "streets.geojson:Franz Spiegel-Gasse"
+      # Grünschnittcontainer – Unterort
+      - name: "Grünschnittcontainer Friedhof"
+        unique_id: voesendorf_place_gruenschnitt_friedhof
+        icon: mdi:tree
+        state: "Unterort"
+        attributes:
+          latitude: 48.125899
+          longitude: 16.342099
+          art: "Grünschnittcontainer"
+          bereich: "Unterort"
+          quelle: "openstreetmap:way/13836906"
+      # Grünschnittcontainer – Oberort
+      - name: "Grünschnittcontainer Konsumstraße"
+        unique_id: voesendorf_place_gruenschnitt_konsumstrasse
+        icon: mdi:tree
+        state: "Oberort"
+        attributes:
+          latitude: 48.129563
+          longitude: 16.325559
+          art: "Grünschnittcontainer"
+          bereich: "Oberort"
+          quelle: "streets.geojson:Konsumstraße"
+      # Grünschnittcontainer – Unterort
+      - name: "Grünschnittcontainer Lindengasse"
+        unique_id: voesendorf_place_gruenschnitt_lindengasse
+        icon: mdi:tree
+        state: "Unterort"
+        attributes:
+          latitude: 48.119233
+          longitude: 16.337071
+          art: "Grünschnittcontainer"
+          bereich: "Unterort"
+          quelle: "streets.geojson:Lindengasse"
+      # Grünschnittcontainer – Oberort
+      - name: "Grünschnittcontainer Mitterberggasse"
+        unique_id: voesendorf_place_gruenschnitt_mitterberggasse
+        icon: mdi:tree
+        state: "Oberort"
+        attributes:
+          latitude: 48.121628
+          longitude: 16.319876
+          art: "Grünschnittcontainer"
+          bereich: "Oberort"
+          quelle: "streets.geojson:Mitterberggasse"
+      # Grünschnittcontainer – Unterort
+      - name: "Grünschnittcontainer NÖ Pflege- und Betreuungszentrum"
+        unique_id: voesendorf_place_gruenschnitt_pflegezentrum
+        icon: mdi:tree
+        state: "Unterort"
+        attributes:
+          latitude: 48.122444
+          longitude: 16.342375
+          art: "Grünschnittcontainer"
+          bereich: "Unterort"
+          quelle: "openstreetmap:way/37558138"
+      # Grünschnittcontainer – Unterort
+      - name: "Grünschnittcontainer Schloss/Parkplatz"
+        unique_id: voesendorf_place_gruenschnitt_schloss
+        icon: mdi:tree
+        state: "Unterort"
+        attributes:
+          latitude: 48.120668
+          longitude: 16.34345
+          art: "Grünschnittcontainer"
+          bereich: "Unterort"
+          quelle: "streets.geojson:Schlossplatz"
+      # Grünschnittcontainer – Unterort
+      - name: "Grünschnittcontainer Schönbrunner Allee"
+        unique_id: voesendorf_place_gruenschnitt_schoenbrunner_allee
+        icon: mdi:tree
+        state: "Unterort"
+        attributes:
+          latitude: 48.131542
+          longitude: 16.326523
+          art: "Grünschnittcontainer"
+          bereich: "Unterort"
+          quelle: "streets.geojson:Schönbrunner Allee"
+      # Müllinsel – Oberort
+      - name: "Müllinsel Benyasiedlung"
+        unique_id: voesendorf_place_muellinsel_benyasiedlung
+        icon: mdi:trash-can
+        state: "Oberort"
+        attributes:
+          latitude: 48.115385
+          longitude: 16.312724
+          art: "Müllinsel"
+          bereich: "Oberort"
+          hinweis: "Müllinsel mit Restmüll, Bio und Kartonagen"
+          quelle: "streets.geojson:Benyasiedlung"

@@ -37,7 +37,8 @@ type: custom:voesendorf-waste-card
 | `street` | string | – | Straßenname; wird `zone: auto` verwendet, leitet die Karte das Gebiet daraus ab |
 | `show_map` | bool | `true` | Karte der drei Gebiete anzeigen (offline, ohne Kacheln) |
 | `map_height` | int | `320` | Höhe der Karte in Pixel |
-| `tile_url` | string | `""` | **Leer = Offline-Karte.** Erst wenn hier eine Kachel-URL steht (z. B. `https://tiles.example.com/{z}/{x}/{y}.png`), wird Leaflet geladen und eine echte Kartenkachel-Ansicht angezeigt |
+| `tile_source` | string | `""` | **Leer = Offline-Karte.** `ha` lädt echte Kartenkacheln über den Kartenproxy der eigenen Home-Assistant-Instanz (siehe unten) |
+| `tile_url` | string | `""` | Eigene Kachel-URL, z. B. `https://tiles.example.com/{z}/{x}/{y}.png`; wird ignoriert wenn `tile_source: ha` gesetzt ist |
 | `tile_attribution` | string | `""` | Anbietername für den Kachel-Hinweis; sonst wird der Hostname aus `tile_url` verwendet |
 | `tile_fallback` | bool | `true` | Nach 3 fehlgeschlagenen Kacheln automatisch auf die Offline-Karte zurückschalten (samt Hinweis) |
 | `days_ahead` | int | `6` | Zeitfenster für „Nächste Abholungen“ |
@@ -72,9 +73,29 @@ Karten gedacht und antworten auf solche Anfragen mit einer Sperre
 ([osm.wiki/Blocked](https://osm.wiki/Blocked)). Deshalb zeichnet die Karte die Straßen
 selbst – das ist schnell, funktioniert offline und löst keine Sperre aus.
 
-Wer trotzdem einen „echten“ Kartenhintergrund möchte, trägt die URL eines Anbieters ein,
-dessen Nutzungsbedingungen eingebettete Karten erlauben (eigener Tile-Server,
-Anbieter mit API-Key, …):
+**Kacheln über Home Assistant (`tile_source: ha`)**
+
+Die eingebaute Kartenkarte lädt ihre Kacheln nicht direkt von OSM: Core proxyt und cacht
+sie (Systemintegration `map_tiles`) und schickt dabei den identifizierenden User-Agent,
+den die OSM-Tile-Policy verlangt und den ein Browser nicht senden kann. Dieselben Kacheln
+lassen sich auch in dieser Karte verwenden:
+
+```yaml
+type: custom:voesendorf-waste-card
+zone: oberort
+tile_source: ha
+```
+
+Die Karte holt sich dazu über `map_tiles/access_token` einen Token (rotiert alle 30
+Minuten) und lädt `/api/map_tiles/raster/{z}/{x}/{y}.png?token=…` von der eigenen Instanz.
+Schlägt das fehl – ältere Home-Assistant-Version, keine Verbindung, blockierte Kacheln –
+fällt sie automatisch auf die Offline-Karte zurück. In diesem Modus lädt die Karte Leaflet
+von einem CDN; die Offline-Karte braucht das nicht.
+
+**Eigener Kachelserver (`tile_url`)**
+
+Wer einen Anbieter hat, dessen Nutzungsbedingungen eingebettete Karten erlauben, trägt
+dessen URL ein:
 
 ```yaml
 type: custom:voesendorf-waste-card
@@ -112,7 +133,9 @@ und die Auswahlfelder für Straße und Gebiet.
 * Die Kartendaten (Straßenverläufe) stammen aus OpenStreetMap (ODbL) und werden über die
   Overpass-API bezogen (einmalig beim Erzeugen von `data/streets.geojson`). Die Karte
   selbst ist eigenständig gezeichnet und kommt ohne Netzzugriff aus; Leaflet wird nur
-  geladen, wenn `tile_url` gesetzt ist.
+  geladen, wenn Kacheln (`tile_source: ha` oder `tile_url`) verwendet werden.
+* Wer die Standorte (ASZ, Müllinseln, Grünschnittcontainer) auf der **eingebauten**
+  Kartenkarte zeigen will, findet Paket und Anleitung in [`PLACES.md`](PLACES.md).
 * Zeitzone/Sprache: Die Beschriftungen richten sich nach der Sprache des Browsers
   (`de` oder `en`).
 * Fehler gefunden? Bitte ein Issue im Repository anlegen – die Rohdaten lassen sich mit

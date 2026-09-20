@@ -22,6 +22,8 @@ Abfuhrgebiete.
 | `Abfallkalender_Voesendorf_Seepark_2026.ics` | Kalender Abfuhrgebiet **Seepark** |
 | `data/voesendorf_waste_2026.json` | Alle Termine, Straßenlisten, Feiertage, Zusatzinfos |
 | `data/streets.geojson` | Straßengeometrien je Abfuhrgebiet (OpenStreetMap) für die Karte |
+| `data/places.json` | Standorte von ASZ, Blumenerde-Aktion, Müllinseln und Grünschnittcontainern |
+| `packages/voesendorf_places.yaml` | Fertiges Home-Assistant-Paket, das diese Standorte als Sensoren anlegt |
 | `dist/voesendorf-waste-card.js` | Fertige Lovelace-Karte (eigenständig, keine Integration nötig) |
 | `tools/` | Skripte, mit denen die Daten aus dem PDF erzeugt werden |
 | `waste_collection_schedule/source/voesendorf_at.py` | Quelle für die Integration `waste_collection_schedule` |
@@ -145,6 +147,7 @@ des laufenden Jahres und braucht **keine Integration**. Sie zeigt:
    street: Marktstraße     # optional: die Straße bestimmt das Gebiet automatisch
    show_map: true
    days_ahead: 6
+   # tile_source: ha      # optional: echte Kartenkacheln über den HA-Proxy (s. u.)
    ```
 
 > **Warum keine Kartenkacheln?** Die freiwillig betriebenen Server von
@@ -156,7 +159,49 @@ des laufenden Jahres und braucht **keine Integration**. Sie zeigt:
 > Karte automatisch auf die Offline-Darstellung zurück. Details in
 > [`docs/CARD.md`](docs/CARD.md).
 
+> **Echte Kacheln in der eigenen Karte?** Mit `tile_source: ha` holt sich die Karte den
+> Token des eingebauten Kartenproxys (`map_tiles/access_token`) und lädt
+> `/api/map_tiles/raster/{z}/{x}/{y}.png?token=…` – dieselben Kacheln wie die eingebaute
+> Karte, ohne direkten Kontakt zu OSM. Der Token rotiert alle 30 Minuten, die Karte holt
+> ihn bei Bedarf neu; scheitert es trotzdem, fällt sie automatisch auf die Offline-Karte
+> zurück.
+
 Alle Optionen stehen in [`docs/CARD.md`](docs/CARD.md).
+
+---
+
+### Variante E – Eingebaute Kartenkarte (nur die Standorte)
+
+Die eingebaute Kartenkarte (`type: map`) kann **keine** Straßenflächen zeichnen – sie zeigt
+Entitäten mit Koordinaten. Dafür braucht sie keine fremden Kachelserver: Home Assistant
+ruft die OSM-Kacheln selbst ab (Systemintegration `map_tiles`, mit eigenem `User-Agent` und
+Server-Cache) und liefert sie unter `/api/map_tiles/…` aus. Deshalb greift dort die
+OSM-Sperre nicht.
+
+`packages/voesendorf_places.yaml` legt dafür 14 Sensoren an – ASZ, Blumenerde-Aktion,
+Müllinsel Benyasiedlung und alle Grünschnittcontainer. Jeder trägt `latitude`/`longitude`
+als Attribut, damit die Kartenkarte ihn zeichnet:
+
+```yaml
+# configuration.yaml
+homeassistant:
+  packages: !include_dir_named packages
+```
+
+Karte dazu (ohne IDs auszukommen ist am einfachsten):
+
+```yaml
+type: map
+title: Müllsammelstellen Vösendorf
+aspect_ratio: 16:9
+default_zoom: 15
+scale_ruler: true
+show_all: true      # zeichnet alle Entitäten mit Koordinaten
+```
+
+Gezielter: im Karten-Editor die gewünschten Sensoren auswählen (Namen beginnen mit
+„Voesendorf…“) oder die IDs aus Entwicklerwerkzeuge → Zustände eintragen. Standorte,
+Quellen und Vorbehalte stehen in [`docs/PLACES.md`](docs/PLACES.md).
 
 ---
 
@@ -204,6 +249,7 @@ python tools/parse_calendar_pdf.py --year 2026      # PDF laden → build/schedu
 python tools/build_data.py --year 2026              # + Straßenlisten → data/*.json
 python tools/build_ics.py --year 2026               # → *.ics im Repo-Root
 python tools/fetch_street_geometry.py --year 2026   # OpenStreetMap → data/streets.geojson
+python tools/fetch_places.py                        # Standorte → data/places.json + packages/
 python tools/build_card.py --year 2026              # → dist/voesendorf-waste-card.js
 python tests/test_upstream_source.py                # Gegenprobe der Upstream-Quelle
 ```
@@ -230,6 +276,9 @@ Für ein neues Jahr außerdem anzupassen:
 ## Rechtliches / Quellen
 
 * Termine und Straßenlisten: Marktgemeinde Vösendorf (amtlicher Müllabfuhrkalender)
+* Standorte (ASZ, Müllinseln, Grünschnittcontainer):
+  [voesendorf.gv.at](https://voesendorf.gv.at/gemeindeamt/wirtschaftshof/), geocodiert über
+  Nominatim bzw. aus `data/streets.geojson`
 * Kartendaten: © OpenStreetMap-Mitwirkende, [ODbL](https://www.openstreetmap.org/copyright),
   abgefragt über die Overpass-API
 * Lizenz dieses Repositories: MIT (siehe [`LICENSE`](LICENSE))
