@@ -37,6 +37,8 @@
     <button data-street="Ortsstraße 71">Ortsstraße (geteilt)</button>
     <button data-street="Anton-Benya-Straße">Anton-Benya-Straße</button>
     <button data-zone="">Alle Bereiche</button>
+    <button data-tiles="https://tile.openstreetmap.org/{z}/{x}/{y}.png">Mit OSM-Kacheln</button>
+    <button data-tiles="https://127.0.0.1:9/{z}/{x}/{y}.png">Mit kaputtem Kachelserver</button>
   </div>
   <div id="card"></div>
 
@@ -71,6 +73,11 @@
         if (button.dataset.zone) config.zone = button.dataset.zone;
         else config.zone = "auto";
         if (button.dataset.street) config.street = button.dataset.street;
+        if (button.dataset.tiles) {
+          config.zone = "oberort";
+          config.tile_url = button.dataset.tiles;
+          config.tile_attribution = "OpenStreetMap";
+        }
         next.setConfig(config);
         next.hass = hass;
         const host = document.getElementById("card");
@@ -78,6 +85,12 @@
         host.appendChild(next);
       });
     });
+
+    // expose the current card for the automated browser checks
+    window.addEventListener("click", () => {
+      window.__card = document.querySelector("voesendorf-waste-card");
+    }, true);
+    window.__card = card;
   </script>
 </body>
 </html>

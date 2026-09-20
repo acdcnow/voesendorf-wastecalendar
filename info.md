@@ -2,7 +2,8 @@
 
 Eigenständige Lovelace-Karte für den Müllabfuhrkalender der Marktgemeinde Vösendorf
 (2331, Niederösterreich). Enthält die Termine 2026, eine Jahresübersicht in den Farben des
-amtlichen PDFs und eine OpenStreetMap-Karte der drei Abfuhrgebiete – **ohne** zusätzliche
+amtlichen PDFs und eine Karte der drei Abfuhrgebiete, die aus den mitgelieferten
+Straßengeometrien gezeichnet wird (offline, ohne Kartenkacheln) – **ohne** zusätzliche
 Integration.
 
 ```yaml

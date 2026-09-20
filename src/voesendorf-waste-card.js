@@ -59,6 +59,12 @@ const STRINGS = {
     mapHint: "Klick auf eine Straße zeigt das Abfuhrgebiet.",
     mapUnavailable: "Karte nicht verfügbar (Leaflet konnte nicht geladen werden).",
     mapLoading: "Karte wird geladen …",
+    mapAttribution: "Eigene Darstellung auf Basis von OpenStreetMap-Daten (ODbL)",
+    mapAttributionTiles: "Kacheln: {provider}",
+    mapOffline: "ohne Kartenkacheln",
+    mapTilesBlocked:
+      "Der Kachelserver hat die Anfragen blockiert (tile.openstreetmap.org ist nicht für eingebettete Karten gedacht). Es wird die Offline-Karte ohne Kacheln angezeigt.",
+    openInOsm: "In OpenStreetMap öffnen",
     legend: "Legende",
     holiday: "Feiertag",
     shifted: "verschobener Termin (Feiertag)",
@@ -93,6 +99,12 @@ const STRINGS = {
     mapHint: "Click a street to highlight its collection area.",
     mapUnavailable: "Map unavailable (Leaflet could not be loaded).",
     mapLoading: "Loading map …",
+    mapAttribution: "Own rendering based on OpenStreetMap data (ODbL)",
+    mapAttributionTiles: "Tiles: {provider}",
+    mapOffline: "no map tiles",
+    mapTilesBlocked:
+      "The tile server blocked the requests (tile.openstreetmap.org is not meant for embedded maps). Showing the tile-less offline map instead.",
+    openInOsm: "Open in OpenStreetMap",
     legend: "Legend",
     holiday: "Public holiday",
     shifted: "shifted date (public holiday)",
@@ -299,6 +311,9 @@ class VoesendorfWasteCard extends HTMLElement {
       days_ahead: 6,
       show_extras: true,
       map_height: 320,
+      tile_url: "",            // empty = offline map, no requests to any tile server
+      tile_attribution: "",
+      tile_fallback: true,     // switch to the offline map if tiles are blocked
       ...config,
       zone,
     };
@@ -432,6 +447,7 @@ class VoesendorfWasteCard extends HTMLElement {
   _hash() {
     return JSON.stringify([this._zone, this._street, this._lang, this._today,
                            this._config.show_map, this._config.show_extras,
+                           this._config.tile_url, this._config.map_height,
                            this._showSettings, this._config.show_types]);
   }
 
@@ -509,7 +525,21 @@ class VoesendorfWasteCard extends HTMLElement {
         .legend span { display: inline-flex; align-items: center; gap: 5px; }
         .swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
         #map { height: ${this._config?.map_height ?? 320}px; border-radius: 8px; margin-top: 8px;
-               background: var(--secondary-background-color, rgba(127,127,127,.1)); }
+               overflow: hidden; background: var(--secondary-background-color, rgba(127,127,127,.1)); }
+        #map svg { display: block; width: 100%; height: 100%; }
+        /* the offline map has no fixed aspect, so it may use more vertical space */
+        #map.offline { height: auto; }
+        #map.offline svg { height: auto; max-height: var(--map-max-height, 640px); }
+        .zone-label { font-size: 26px; font-weight: 600; text-anchor: middle;
+                      fill: var(--primary-text-color); fill-opacity: .55; }
+        .map-foot { display: block; margin-top: 6px; font-size: .72rem;
+                    color: var(--secondary-text-color); }
+        .map-foot a { color: var(--secondary-text-color); }
+        .zone-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-bottom: 4px;
+                       font-size: .78rem; color: var(--primary-text-color); }
+        .zone-key { display: inline-flex; align-items: center; gap: 5px; }
+        .zone-key.active { font-weight: 600; }
+        .map-attr { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; }
         .notice { margin-top: 8px; padding: 8px 10px; border-radius: 8px; font-size: .85rem;
                   background: rgba(217,83,79,.12); color: var(--primary-text-color); }
         .info-list { margin: 6px 0 0; padding-left: 18px; }
@@ -636,7 +666,7 @@ class VoesendorfWasteCard extends HTMLElement {
       <div class="legend"><span><span class="swatch" style="background:#d9534f"></span>${this._t("holiday")}</span></div>
       ${this._config.show_map ? `
         <h3>${this._t("map")} <span class="muted" style="font-weight:400">– ${this._t("mapHint")}</span></h3>
-        <div id="map"></div>` : ""}
+        <div id="map-wrap"><div id="map"></div><div class="map-foot" id="map-foot"></div></div>` : ""}
       <h3>${this._t("year", { year: SCHEDULE.year })}</h3>
       <div class="months">${this._monthsHtml(dateMapZone)}</div>
       ${containers ? `<h3>${this._t("containers")}</h3><ul class="info-list muted">${containers}</ul>` : ""}
@@ -764,25 +794,75 @@ class VoesendorfWasteCard extends HTMLElement {
     this.shadowRoot.prepend(style);
   }
 
+  /** Every coordinate pair of the bundled geometry, split by "everything" and "selected area". */
+  _mapPoints(zoneSlug) {
+    const all = [];
+    const focus = [];
+    for (const feature of STREETS.features) {
+      const geometry = feature.geometry;
+      if (!geometry) continue;
+      const rings = geometry.type === "Polygon" ? geometry.coordinates : [geometry.coordinates];
+      for (const ring of rings) {
+        for (const point of ring) {
+          all.push(point);
+          if ((feature.properties || {}).zone === zoneSlug) focus.push(point);
+        }
+      }
+    }
+    return { all, focus };
+  }
+
   async _renderMap(zone) {
     const container = this.shadowRoot.getElementById("map");
     if (!container) return;
+    if (this._map) {
+      this._map.remove();
+      this._map = null;
+    }
+    if (this._resizeObserver) {
+      this._resizeObserver.disconnect();
+      this._resizeObserver = null;
+    }
+    // Default: no external requests at all. tile.openstreetmap.org is not intended for
+    // embedded maps and blocks them, so tiles only load when tile_url is configured.
+    if (!this._config.tile_url) {
+      this._renderOfflineMap(container, zone, false);
+      return;
+    }
+    container.classList.remove("offline");
+    container.style.removeProperty("--map-max-height");
     container.innerHTML = `<div class="muted" style="padding:10px">${this._t("mapLoading")}</div>`;
     let L;
     try {
       L = await ensureLeaflet();
     } catch (error) {
-      container.innerHTML = `<div class="muted" style="padding:10px">${this._t("mapUnavailable")}</div>`;
+      this._renderOfflineMap(container, zone, false);
       return;
     }
     this._leafletCss = await ensureLeafletCss();
     this._applyLeafletCss();
     container.innerHTML = "";
+
+    const provider = this._config.tile_attribution || this._config.tile_url.split("/")[2] || "tiles";
     const map = L.map(container, { scrollWheelZoom: false, attributionControl: true });
-    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    const layer = L.tileLayer(this._config.tile_url, {
       maxZoom: 19,
-      attribution: "&copy; OpenStreetMap contributors",
+      attribution: this._t("mapAttributionTiles", { provider }) +
+        " &copy; OpenStreetMap contributors",
     }).addTo(map);
+    const foot = this.shadowRoot.getElementById("map-foot");
+    if (foot) {
+      foot.innerHTML = `<span>${this._t("mapAttributionTiles", { provider })}` +
+        ` · &copy; OpenStreetMap contributors</span>`;
+    }
+    let tileErrors = 0;
+    layer.on("tileerror", () => {
+      tileErrors += 1;
+      if (tileErrors >= 3 && this._config.tile_fallback) {
+        layer.off("tileerror");
+        this._renderOfflineMap(container, zone, true);
+      }
+    });
 
     const bounds = [];      // everything -> fallback view
     const zoneBounds = [];  // selected area -> preferred view
@@ -846,13 +926,142 @@ class VoesendorfWasteCard extends HTMLElement {
     };
     if (!applyView()) setTimeout(applyView, 150);
 
-    if (this._resizeObserver) this._resizeObserver.disconnect();
     this._resizeObserver = new ResizeObserver(() => {
       map.invalidateSize();
       if (!this._viewApplied) this._viewApplied = applyView();
     });
     this._resizeObserver.observe(container);
     map.on("dragstart", () => { this._viewApplied = true; });
+  }
+
+  /**
+   * Tile-less map: the bundled street geometry is drawn as SVG. No network access,
+   * nothing to be blocked - this is the default because tile.openstreetmap.org
+   * blocks embedded/third-party usage.
+   */
+  _renderOfflineMap(container, zone, tilesBlocked) {
+    const { all, focus } = this._mapPoints(zone.slug);
+    const use = focus.length > 8 ? focus : all;
+    if (!use.length) {
+      container.innerHTML = "";
+      return;
+    }
+
+    const lats = use.map((point) => point[1]);
+    const midLat = (Math.min(...lats) + Math.max(...lats)) / 2;
+    const shrink = Math.cos((midLat * Math.PI) / 180);   // keep the aspect ratio
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const [lon, lat] of use) {
+      minX = Math.min(minX, lon * shrink);
+      maxX = Math.max(maxX, lon * shrink);
+      minY = Math.min(minY, lat);
+      maxY = Math.max(maxY, lat);
+    }
+    const padX = (maxX - minX || 0.002) * 0.10;
+    const padY = (maxY - minY || 0.002) * 0.10;
+    minX -= padX; maxX += padX; minY -= padY; maxY += padY;
+    const width = maxX - minX;
+    const height = maxY - minY;
+    const svgHeight = 1000 * (height / width);
+    const project = ([lon, lat]) => [
+      (((lon * shrink) - minX) / width) * 1000,
+      ((maxY - lat) / height) * svgHeight,
+    ];
+    const toPath = (ring, close) => ring
+      .map((point, index) => {
+        const [x, y] = project(point);
+        return `${index ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`;
+      })
+      .join(" ") + (close ? " Z" : "");
+
+    const parts = [];
+    const centroids = {};
+    for (const feature of STREETS.features) {
+      const props = feature.properties || {};
+      const geometry = feature.geometry;
+      if (!geometry) continue;
+      const zoneName = SCHEDULE.zones[props.zone]?.name || "";
+      if (props.zone) {
+        const ring = geometry.type === "Polygon" ? geometry.coordinates[0] : geometry.coordinates;
+        const middle = ring[Math.floor(ring.length / 2)];
+        const bucket = (centroids[props.zone] = centroids[props.zone] || { x: 0, y: 0, n: 0 });
+        const [x, y] = project(middle);
+        bucket.x += x; bucket.y += y; bucket.n += 1;
+      }
+      if (props.kind === "rail") {
+        parts.push(`<path d="${toPath(geometry.coordinates, false)}" fill="none" stroke="#8d8d8d"` +
+          ` stroke-width="2.5" stroke-dasharray="10 7" opacity=".8"><title>Badner Bahn</title></path>`);
+        continue;
+      }
+      if (props.kind === "settlement") {
+        const active = props.zone === zone.slug;
+        const colour = ZONE_COLOURS[props.zone] || "#999";
+        parts.push(`<path d="${toPath(geometry.coordinates[0], true)}" fill="${colour}"` +
+          ` fill-opacity="${active ? 0.3 : 0.13}" stroke="${colour}" stroke-width="1.5"` +
+          ` data-map-zone="${props.zone}"><title>${props.street} – ${zoneName}</title></path>`);
+        continue;
+      }
+      const active = props.zone === zone.slug;
+      const colour = props.shared ? "#9e9e9e" : (ZONE_COLOURS[props.zone] || "#999");
+      parts.push(`<path d="${toPath(geometry.coordinates, false)}" fill="none" stroke="${colour}"` +
+        ` stroke-width="${active ? 4.5 : 2.5}" stroke-opacity="${active ? 0.95 : 0.4}"` +
+        ` stroke-linecap="round" stroke-linejoin="round"` +
+        `${props.shared ? ' stroke-dasharray="6 4"' : ""}` +
+        ` data-map-zone="${props.zone}">` +
+        `<title>${props.street} – ${zoneName}${props.shared ? ` (${props.part || "geteilt"})` : ""}</title>` +
+        "</path>");
+    }
+
+    const labels = Object.entries(centroids)
+      .filter(([, bucket]) => bucket.n)
+      .map(([slug, bucket]) => {
+        const [x, y] = [bucket.x / bucket.n, bucket.y / bucket.n];
+        return `<text class="zone-label" x="${x.toFixed(0)}" y="${y.toFixed(0)}"` +
+          ` data-map-zone="${slug}">${SCHEDULE.zones[slug]?.name || slug}</text>`;
+      });
+
+    const centre = [(minY + maxY) / 2, (minX + maxX) / 2 / shrink];
+    container.classList.add("offline");
+    container.style.setProperty("--map-max-height",
+      `${Math.max((this._config.map_height || 320) * 2, 480)}px`);
+    container.innerHTML = `
+      <svg viewBox="0 0 1000 ${svgHeight.toFixed(0)}" preserveAspectRatio="xMidYMid meet"
+           role="img" aria-label="${this._t("map")}">
+        <rect x="0" y="0" width="1000" height="${svgHeight.toFixed(0)}"
+              fill="var(--secondary-background-color, #f2f2f2)"/>
+        ${parts.join("")}
+        ${labels.join("")}
+      </svg>`;
+    const foot = this.shadowRoot.getElementById("map-foot");
+    if (foot) {
+      const legend = Object.entries(SCHEDULE.zones).map(([slug, info]) => {
+        const days = TYPE_ORDER.filter((type) => info.weekday?.[type])
+          .map((type) => `${SCHEDULE.legend[type].short}: ${this._weekdayName(info.weekday[type])}`)
+          .join(" · ");
+        return `<span class="zone-key${slug === zone.slug ? " active" : ""}" data-map-zone="${slug}">` +
+          `<span class="swatch" style="background:${ZONE_COLOURS[slug]}"></span>${info.name}` +
+          `<span class="muted">${days}</span></span>`;
+      }).join("");
+      foot.innerHTML = `
+        <div class="zone-legend">${legend}</div>
+        <div class="map-attr">
+          <span>${this._t("mapAttribution")} · ${this._t("mapOffline")}</span>
+          <a href="https://www.openstreetmap.org/#map=14/${centre[0].toFixed(5)}/${centre[1].toFixed(5)}"
+             target="_blank" rel="noopener">${this._t("openInOsm")}</a>
+        </div>`;
+      if (tilesBlocked) {
+        foot.insertAdjacentHTML("beforeend",
+          `<div class="notice" style="margin-top:4px">${this._t("mapTilesBlocked")}</div>`);
+      }
+    }
+
+    this.shadowRoot.querySelectorAll("[data-map-zone]").forEach((node) => {
+      const slug = node.dataset.mapZone;
+      if (SCHEDULE.zones[slug] && slug !== zone.slug) {
+        node.style.cursor = "pointer";
+        node.addEventListener("click", () => this._setZone(slug, true));
+      }
+    });
   }
 
   disconnectedCallback() {
@@ -864,15 +1073,21 @@ class VoesendorfWasteCard extends HTMLElement {
   }
 }
 
-customElements.define(CARD_TYPE, VoesendorfWasteCard);
+/* A second evaluation of this module (manual install next to a HACS copy, or a cached
+   and a fresh file) must not throw "the name has already been used with this registry". */
+if (!customElements.get(CARD_TYPE)) {
+  customElements.define(CARD_TYPE, VoesendorfWasteCard);
+}
 
 window.customCards = window.customCards || [];
-window.customCards.push({
-  type: CARD_TYPE,
-  name: "Vösendorf Abfallkalender",
-  description: "Müllabfuhrkalender der Marktgemeinde Vösendorf mit Karte und Jahresübersicht",
-  preview: false,
-  documentationURL: "https://github.com/acdcnow/voesendorf-wastecalendar",
-});
+if (!window.customCards.some((card) => card.type === CARD_TYPE)) {
+  window.customCards.push({
+    type: CARD_TYPE,
+    name: "Vösendorf Abfallkalender",
+    description: "Müllabfuhrkalender der Marktgemeinde Vösendorf mit Karte und Jahresübersicht",
+    preview: false,
+    documentationURL: "https://github.com/acdcnow/voesendorf-wastecalendar",
+  });
+}
 
 console.info(`%c ${CARD_TYPE} %c v${VERSION} `, "color:white;background:#3f9e8f", "color:#3f9e8f;background:white");

@@ -120,7 +120,9 @@ des laufenden Jahres und braucht **keine Integration**. Sie zeigt:
 
 * die nächsten Abholungen („morgen“, „in 3 Tagen“),
 * eine Jahresübersicht in den Farben des amtlichen PDFs,
-* eine OpenStreetMap-Karte mit allen drei Abfuhrgebieten (Straßen farbig, geteilte Straßen grau),
+* eine Karte mit allen drei Abfuhrgebieten (Straßen farbig, geteilte Straßen grau),
+  gezeichnet aus den mitgelieferten Straßengeometrien – **ohne Kartenkacheln und ohne
+  Netzzugriff**,
 * Straßen-Auswahl (wird im Browser gespeichert),
 * Zusatzinfos: Altstoffsammelzentrum, Sperrmüll, Blumenerde-Aktion.
 
@@ -144,6 +146,15 @@ des laufenden Jahres und braucht **keine Integration**. Sie zeigt:
    show_map: true
    days_ahead: 6
    ```
+
+> **Warum keine Kartenkacheln?** Die freiwillig betriebenen Server von
+> `tile.openstreetmap.org` sind nicht für eingebettete Karten gedacht und sperren solche
+> Anfragen ([osm.wiki/Blocked](https://osm.wiki/Blocked)). Die Karte zeichnet die Straßen
+> daher selbst – offline und ohne Sperre. Echte Kacheln sind trotzdem möglich: mit
+> `tile_url` (z. B. eigener Tile-Server oder ein Anbieter, dessen Nutzungsbedingungen
+> eingebettete Karten erlauben) wird Leaflet geladen; blockiert der Server, fällt die
+> Karte automatisch auf die Offline-Darstellung zurück. Details in
+> [`docs/CARD.md`](docs/CARD.md).
 
 Alle Optionen stehen in [`docs/CARD.md`](docs/CARD.md).
 
