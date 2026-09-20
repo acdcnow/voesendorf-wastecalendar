@@ -5,6 +5,41 @@ Versionen folgen [SemVer](https://semver.org/lang/de/).
 
 ---
 
+## [1.3.0] – 2026-09-20
+
+### Deutsch
+
+**Geändert**
+
+* **Kompakte Karte:** Die Jahresübersicht über alle 12 Monate ist weg. Die Karte zeigt
+  jetzt **nur den aktuellen Monat** als Kalender. Kleine Pfeile neben dem Monatsnamen
+  blättern durch das Kalenderjahr (innerhalb 2026), ein Punkt-Button springt zum aktuellen
+  Monat zurück.
+* **Details im Popup:** Container im Gebiet, Hinweise und Zusatztermine (ASZ, Sperrmüll,
+  Blumenerde) liegen hinter einem Info-Symbol in der Kopfzeile und öffnen sich als Dialog.
+  Schließen mit ✕, Esc oder Klick daneben. Dadurch belegt die Karte auf dem Dashboard
+  deutlich weniger Platz.
+* Der Info-Button erscheint nur, wenn es etwas anzuzeigen gibt; mit `show_extras: false`
+  fehlen die Zusatztermine weiterhin. Nach Mitternacht springt die Ansicht automatisch
+  wieder auf den aktuellen Monat.
+
+### English
+
+**Changed**
+
+* **Compact card:** the twelve-month year overview is gone. The card now shows a **single
+  month** calendar. Small arrows next to the month name page through the calendar year
+  (within 2026), a dot button jumps back to the current month.
+* **Details in a popup:** containers, notes and extra dates (recycling centre, bulky waste,
+  compost campaign) moved behind an info icon in the header and open as a dialog. Close it
+  with ✕, Esc or a click outside. The card now uses far less dashboard space.
+* The info button only appears when there is something to show; `show_extras: false` still
+  hides the extra dates. After midnight the view snaps back to the current month.
+
+[1.3.0]: https://github.com/acdcnow/voesendorf-wastecalendar/releases/tag/v1.3.0
+
+---
+
 ## [1.2.0] – 2026-09-20
 
 Erste veröffentlichte Version – vorher lag nur das amtliche PDF im Repository.

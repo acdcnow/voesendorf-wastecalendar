@@ -123,8 +123,14 @@ und die Auswahlfelder für Straße und Gebiet.
   Geteilte Straßen (`Ortsstraße`, `Schönbrunner Allee`) sind grau, weil sie zu zwei
   Gebieten gehören. Unter der Karte stehen die Legende (Gebiet + Abfuhrtage) sowie ein
   Link, der die Kartenmitte in OpenStreetMap öffnet.
-* **Jahresübersicht:** farbige Tage wie im amtlichen PDF; Feiertage sind rot umrandet, der
-  heutige Tag ist hervorgehoben. Tooltip beim Überfahren zeigt Datum und Abfallarten.
+* **Monatsansicht:** farbige Tage wie im amtlichen PDF, aber nur für **einen** Monat
+  (Standard: der aktuelle). Feiertage sind rot umrandet, der heutige Tag ist
+  hervorgehoben. Tooltip beim Überfahren zeigt Datum und Abfallarten. Mit den Pfeilen
+  neben dem Monatsnamen blättert man durch das Kalenderjahr, der Punkt springt zurück zum
+  aktuellen Monat.
+* **Details:** Das Info-Symbol in der Kopfzeile öffnet einen Dialog mit Containerstandorten,
+  Hinweisen und Zusatzterminen (ASZ, Sperrmüll, Blumenerde). Das hält die Karte auf dem
+  Dashboard klein; schließen mit ✕, `Esc` oder Klick daneben.
 
 ## Hinweise
 

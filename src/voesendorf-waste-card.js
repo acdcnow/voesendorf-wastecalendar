@@ -48,6 +48,18 @@ const LEAFLET = {
 // substitutes the `token` layer option into the template.
 const HA_TILES_PATH = "/api/map_tiles/raster/{z}/{x}/{y}.png?token={token}";
 
+// Inline icons keep the card free of any Home Assistant component dependency.
+const svgIcon = (path) =>
+  `<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">` +
+  `<path fill="currentColor" d="${path}"/></svg>`;
+const ICONS = {
+  details: svgIcon("M11 9h2V7h-2m1 13c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8m0-18A10 10 0 0 0 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2m-1 15h2v-6h-2v6Z"),
+  close: svgIcon("M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"),
+  prev: svgIcon("M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12l4.58-4.59Z"),
+  next: svgIcon("M8.59 16.59 10 18l6-6-6-6-1.41 1.41L13.17 12l-4.58 4.59Z"),
+  today: svgIcon("M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"),
+};
+
 const STRINGS = {
   de: {
     next: "Nächste Abholungen",
@@ -68,6 +80,11 @@ const STRINGS = {
     mapAttributionTiles: "Kacheln: {provider}",
     mapAttributionHa: "Kacheln über den Home-Assistant-Kartenproxy (OpenStreetMap)",
     mapOffline: "ohne Kartenkacheln",
+    details: "Details & Zusatztermine",
+    monthPrev: "Voriger Monat",
+    monthNext: "Nächster Monat",
+    monthCurrent: "Aktueller Monat",
+    close: "Schließen",
     mapTilesBlocked:
       "Der Kachelserver hat die Anfragen blockiert (tile.openstreetmap.org ist nicht für eingebettete Karten gedacht). Es wird die Offline-Karte ohne Kacheln angezeigt.",
     openInOsm: "In OpenStreetMap öffnen",
@@ -109,6 +126,11 @@ const STRINGS = {
     mapAttributionTiles: "Tiles: {provider}",
     mapAttributionHa: "Tiles via the Home Assistant map tile proxy (OpenStreetMap)",
     mapOffline: "no map tiles",
+    details: "Details & extra dates",
+    monthPrev: "Previous month",
+    monthNext: "Next month",
+    monthCurrent: "Current month",
+    close: "Close",
     mapTilesBlocked:
       "The tile server blocked the requests (tile.openstreetmap.org is not meant for embedded maps). Showing the tile-less offline map instead.",
     openInOsm: "Open in OpenStreetMap",
@@ -299,6 +321,8 @@ class VoesendorfWasteCard extends HTMLElement {
     this._tileMode = null;
     this._darkTiles = false;
     this._haToken = "";
+    this._monthOffset = 0;      // 0 = current month, the card only shows one
+    this._detailsOpen = false;  // the details dialog survives a re-render
     this._renderedHash = null;
     this._showSettings = false;
     this._streetsIndex = streetIndex(SCHEDULE);
@@ -345,6 +369,7 @@ class VoesendorfWasteCard extends HTMLElement {
     const today = iso(new Date());
     if (first || this._today !== today) {
       this._today = today;
+      this._monthOffset = 0;   // a new day: back to the current month
       this._render();
     }
     const dark = Boolean(hass && hass.themes && hass.themes.darkMode);
@@ -464,7 +489,7 @@ class VoesendorfWasteCard extends HTMLElement {
     return JSON.stringify([this._zone, this._street, this._lang, this._today,
                            this._config.show_map, this._config.show_extras,
                            this._config.tile_url, this._config.tile_source,
-                           this._config.map_height,
+                           this._config.map_height, this._monthOffset,
                            this._showSettings, this._config.show_types]);
   }
 
@@ -484,6 +509,10 @@ class VoesendorfWasteCard extends HTMLElement {
     this.shadowRoot.innerHTML = this._shell(this._bodyZone(zone));
     this._attachHandlers();
     if (this._config.show_map) this._renderMap(zone);
+    if (this._detailsOpen) {
+      const dialog = this.shadowRoot.getElementById("details");
+      if (dialog) dialog.showModal();
+    }
   }
 
   _restoreStateOnce() {
@@ -524,9 +553,31 @@ class VoesendorfWasteCard extends HTMLElement {
                     border-radius: 8px; background: var(--secondary-background-color, rgba(127,127,127,.08)); }
         .next-date { min-width: 168px; font-weight: 500; }
         .next-rel { color: var(--secondary-text-color); font-size: .85rem; }
-        .months { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 12px; }
+        /* one month only: the full year made the card far too tall */
+        .months { max-width: min(320px, 100%); }
         .month { border: 1px solid var(--divider-color); border-radius: 8px; padding: 8px; }
         .month-name { font-size: .85rem; font-weight: 500; margin-bottom: 4px; }
+        .month-head { display: flex; align-items: center; justify-content: space-between;
+                      gap: 12px; margin: 18px 0 8px; }
+        .month-head h3 { margin: 0; }
+        .month-nav { display: flex; gap: 4px; }
+        .icon-btn { display: inline-flex; align-items: center; justify-content: center;
+                    width: 34px; height: 34px; padding: 0; border-radius: 50%;
+                    border: 1px solid var(--divider-color); background: transparent;
+                    color: var(--primary-text-color); cursor: pointer; }
+        .icon-btn:hover:not([disabled]) { background: var(--secondary-background-color, rgba(127,127,127,.12)); }
+        .icon-btn[disabled] { opacity: .3; cursor: default; }
+        dialog#details { border: none; border-radius: 14px; padding: 0; margin: auto;
+                         width: min(560px, 92vw); max-height: 85vh;
+                         background: var(--card-background-color, #fff);
+                         color: var(--primary-text-color);
+                         box-shadow: 0 12px 44px rgba(0, 0, 0, .4); }
+        dialog#details::backdrop { background: rgba(0, 0, 0, .45); }
+        .dialog-head { display: flex; align-items: center; justify-content: space-between;
+                       gap: 12px; padding: 12px 8px 12px 16px;
+                       border-bottom: 1px solid var(--divider-color); }
+        .dialog-head h3 { margin: 0; }
+        .dialog-body { padding: 4px 16px 16px; overflow: auto; max-height: 66vh; }
         .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
         .dow { font-size: .62rem; text-align: center; color: var(--secondary-text-color); }
         .day { position: relative; font-size: .68rem; text-align: center; line-height: 1.35;
@@ -574,7 +625,7 @@ class VoesendorfWasteCard extends HTMLElement {
       <ha-card>${body}</ha-card>`;
   }
 
-  _header(zone) {
+  _header(zone, actions = "") {
     const title = this._config.title || "Abfallkalender Vösendorf";
     const subtitle = zone
       ? `${this._t("area")}: <strong>${zone.name}</strong>${this._street ? ` – ${this._street}` : ""}`
@@ -591,6 +642,7 @@ class VoesendorfWasteCard extends HTMLElement {
           <div class="muted">${subtitle}</div>
         </div>
         ${intervals ? `<div class="badge">${intervals}</div>` : ""}
+        ${actions}
       </div>
       ${this._streetPicker(zone)}`;
   }
@@ -676,30 +728,75 @@ class VoesendorfWasteCard extends HTMLElement {
 
     const containers = (zone.containers || []).map((group) =>
       `<li><strong>${group.container}:</strong> ${group.places.join(", ")}</li>`).join("");
+    const hasDetails = Boolean(containers) || (zone.notes || []).length > 0 ||
+      Boolean(this._config.show_extras);
+    const detailsButton = hasDetails
+      ? `<button class="icon-btn" id="details-open" title="${this._t("details")}"` +
+        ` aria-label="${this._t("details")}">${ICONS.details}</button>`
+      : "";
 
     return `<div class="card">
-      ${this._header({ ...zone, weekday: zone.weekday })}
+      ${this._header({ ...zone, weekday: zone.weekday }, detailsButton)}
       ${ambiguous ? `<div class="notice">${this._t("warningShared")}</div>` : ""}
       ${benya ? `<div class="notice">${this._t("warningBeny")}</div>` : ""}
       <h3>${this._t("next")}</h3>
       <div class="next">${nextHtml}</div>
       <div class="legend">${intervals}</div>
-      <div class="legend"><span><span class="swatch" style="background:#d9534f"></span>${this._t("holiday")}</span></div>
+      <div class="legend"><span><span class="swatch" style="background:#d9534f"></span>${this._t("holiday")}</span>
+        <span><span class="swatch" style="box-shadow:inset 0 0 0 2px var(--primary-color)"></span>${this._t("today")}</span></div>
       ${this._config.show_map ? `
         <h3>${this._t("map")} <span class="muted" style="font-weight:400">– ${this._t("mapHint")}</span></h3>
         <div id="map-wrap"><div id="map"></div><div class="map-foot" id="map-foot"></div></div>` : ""}
-      <h3>${this._t("year", { year: SCHEDULE.year })}</h3>
-      <div class="months">${this._monthsHtml(dateMapZone)}</div>
-      ${containers ? `<h3>${this._t("containers")}</h3><ul class="info-list muted">${containers}</ul>` : ""}
-      ${(zone.notes || []).length ? `<h3>${this._t("notes")}</h3>
-        <ul class="info-list muted">${zone.notes.map((note) => `<li>${note}</li>`).join("")}</ul>` : ""}
-      ${this._config.show_extras ? this._extrasHtml() : ""}
+      ${this._monthSection(dateMapZone)}
       <footer>
         <span><a href="${SCHEDULE.sources.info_page}" target="_blank" rel="noopener">
           ${this._t("source")}: Marktgemeinde Vösendorf</a> · ${SCHEDULE.year}</span>
         <span>Karte: © OpenStreetMap contributors</span>
       </footer>
+      ${hasDetails ? this._detailsDialog(zone, containers) : ""}
     </div>`;
+  }
+
+  /**
+   * One month at a time. The full year fitted badly on a dashboard, so the
+   * calendar is limited to a single month (navigable inside the schedule year).
+   */
+  _monthSection(dateMapZone) {
+    const base = new Date();
+    const date = new Date(base.getFullYear(), base.getMonth() + this._monthOffset, 1);
+    const first = new Date(SCHEDULE.year, 0, 1);
+    const last = new Date(SCHEDULE.year, 11, 1);
+    const nav = (id, label, icon, disabled) =>
+      `<button class="icon-btn" id="${id}"${disabled ? " disabled" : ""}` +
+      ` title="${label}" aria-label="${label}">${icon}</button>`;
+    return `
+      <div class="month-head">
+        <h3>${MONTHS[this._lang][date.getMonth()]} ${date.getFullYear()}</h3>
+        <div class="month-nav">
+          ${nav("month-prev", this._t("monthPrev"), ICONS.prev, date <= first)}
+          ${nav("month-current", this._t("monthCurrent"), ICONS.today, !this._monthOffset)}
+          ${nav("month-next", this._t("monthNext"), ICONS.next, date >= last)}
+        </div>
+      </div>
+      <div class="months">${this._monthHtml(dateMapZone, date)}</div>`;
+  }
+
+  /** Containers, notes and extra dates, tucked into a dialog to save space. */
+  _detailsDialog(zone, containers) {
+    const notes = (zone.notes || []).map((note) => `<li>${note}</li>`).join("");
+    return `
+      <dialog id="details" aria-label="${this._t("details")}">
+        <div class="dialog-head">
+          <h3>${this._t("details")}</h3>
+          <button class="icon-btn" id="details-close" title="${this._t("close")}"
+                  aria-label="${this._t("close")}">${ICONS.close}</button>
+        </div>
+        <div class="dialog-body">
+          ${containers ? `<h3>${this._t("containers")}</h3><ul class="info-list muted">${containers}</ul>` : ""}
+          ${notes ? `<h3>${this._t("notes")}</h3><ul class="info-list muted">${notes}</ul>` : ""}
+          ${this._config.show_extras ? this._extrasHtml() : ""}
+        </div>
+      </dialog>`;
   }
 
   _weekdayName(short) {
@@ -707,46 +804,35 @@ class VoesendorfWasteCard extends HTMLElement {
     return index >= 0 ? WEEKDAYS[this._lang][index] : short;
   }
 
-  _monthsHtml(dateMapZone) {
-    const year = SCHEDULE.year;
+  /** Grid of exactly one month (the heading lives in `_monthSection`). */
+  _monthHtml(dateMapZone, date) {
+    const year = date.getFullYear();
+    const month = date.getMonth();
     const holidays = new Set(SCHEDULE.holidays.map((h) => h.date));
     const today = iso(new Date());
-    let html = `<div class="legend" style="margin-bottom:10px">
-      <span><span class="swatch" style="background:${TYPE_COLOURS.RM}"></span>Restmüll 14-tägig</span>
-      <span><span class="swatch" style="background:${TYPE_COLOURS.RM4}"></span>Restmüll 4-wöchig</span>
-      <span><span class="swatch" style="background:${TYPE_COLOURS.Bio}"></span>Biomüll</span>
-      <span><span class="swatch" style="background:transparent;box-shadow:inset 0 0 0 1px #d9534f"></span>${this._t("holiday")}</span>
-      <span><span class="swatch" style="background:transparent;box-shadow:inset 0 0 0 2px var(--primary-color)"></span>${this._t("today")}</span>
-    </div>`;
-
-    for (let month = 0; month < 12; month += 1) {
-      const first = new Date(year, month, 1);
-      const daysInMonth = new Date(year, month + 1, 0).getDate();
-      const offset = (first.getDay() + 6) % 7; // Monday first
-      let cells = WEEKDAYS[this._lang].map((dow) => `<div class="dow">${dow[0]}</div>`).join("");
-      for (let i = 0; i < offset; i += 1) cells += `<div class="day out"></div>`;
-      for (let day = 1; day <= daysInMonth; day += 1) {
-        const key = iso(new Date(year, month, day));
-        const types = (dateMapZone[key] || []).filter((t) => this._config.show_types.includes(t));
-        const title = [
-          this._formatDay(new Date(year, month, day)),
-          types.map((t) => SCHEDULE.legend[t].name).join(", "),
-          holidays.has(key) ? this._t("holiday") : "",
-        ].filter(Boolean).join(" – ");
-        const classes = ["day"];
-        if (types.length) classes.push("marked");
-        if (holidays.has(key)) classes.push("holiday");
-        if (key === today) classes.push("today");
-        const background = types.length
-          ? `background:linear-gradient(135deg, ${types.map((t, i) =>
-              `${TYPE_COLOURS[t]} ${(i / types.length) * 100}% ${((i + 1) / types.length) * 100}%`).join(", ")})`
-          : "";
-        cells += `<div class="${classes.join(" ")}" style="${background}" title="${title}">${day}</div>`;
-      }
-      html += `<div class="month"><div class="month-name">${MONTHS[this._lang][month]}</div>
-        <div class="days">${cells}</div></div>`;
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const offset = (new Date(year, month, 1).getDay() + 6) % 7; // Monday first
+    let cells = WEEKDAYS[this._lang].map((dow) => `<div class="dow">${dow[0]}</div>`).join("");
+    for (let i = 0; i < offset; i += 1) cells += `<div class="day out"></div>`;
+    for (let day = 1; day <= daysInMonth; day += 1) {
+      const key = iso(new Date(year, month, day));
+      const types = (dateMapZone[key] || []).filter((t) => this._config.show_types.includes(t));
+      const title = [
+        this._formatDay(new Date(year, month, day)),
+        types.map((t) => SCHEDULE.legend[t].name).join(", "),
+        holidays.has(key) ? this._t("holiday") : "",
+      ].filter(Boolean).join(" – ");
+      const classes = ["day"];
+      if (types.length) classes.push("marked");
+      if (holidays.has(key)) classes.push("holiday");
+      if (key === today) classes.push("today");
+      const background = types.length
+        ? `background:linear-gradient(135deg, ${types.map((t, i) =>
+            `${TYPE_COLOURS[t]} ${(i / types.length) * 100}% ${((i + 1) / types.length) * 100}%`).join(", ")})`
+        : "";
+      cells += `<div class="${classes.join(" ")}" style="${background}" title="${title}">${day}</div>`;
     }
-    return html;
+    return `<div class="month"><div class="days">${cells}</div></div>`;
   }
 
   _extrasHtml() {
@@ -801,6 +887,36 @@ class VoesendorfWasteCard extends HTMLElement {
     }
     this.shadowRoot.querySelectorAll("[data-zone]").forEach((element) => {
       element.addEventListener("click", () => this._setZone(element.dataset.zone, true));
+    });
+
+    // Details (containers, notes, extra dates) live in a dialog to keep the card small.
+    const dialog = this.shadowRoot.getElementById("details");
+    const openButton = this.shadowRoot.getElementById("details-open");
+    if (dialog && openButton) {
+      this._detailsOpen = dialog.open;
+      openButton.addEventListener("click", () => {
+        this._detailsOpen = true;
+        dialog.showModal();
+      });
+      this.shadowRoot.getElementById("details-close")?.addEventListener("click", () => dialog.close());
+      // A click on the backdrop targets the dialog element itself.
+      dialog.addEventListener("click", (event) => {
+        if (event.target === dialog) dialog.close();
+      });
+      dialog.addEventListener("close", () => { this._detailsOpen = dialog.open; });
+    }
+
+    const shiftMonth = (step) => {
+      this._monthOffset += step;
+      this._renderedHash = null;
+      this._render();
+    };
+    this.shadowRoot.getElementById("month-prev")?.addEventListener("click", () => shiftMonth(-1));
+    this.shadowRoot.getElementById("month-next")?.addEventListener("click", () => shiftMonth(1));
+    this.shadowRoot.getElementById("month-current")?.addEventListener("click", () => {
+      this._monthOffset = 0;
+      this._renderedHash = null;
+      this._render();
     });
   }
 

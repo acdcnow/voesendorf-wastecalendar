@@ -4,8 +4,8 @@ Aufbereitete Müllabfuhr-Termine der Marktgemeinde **Vösendorf** (2331, Nieder�
 als ICS-Kalender, JSON-Datensatz und fertige Home-Assistant-Karte mit Karte der drei
 Abfuhrgebiete.
 
-**Aktuelle Version:** [v1.2.0](https://github.com/acdcnow/voesendorf-wastecalendar/releases/tag/v1.2.0)
-· [Änderungen / Changelog](CHANGELOG.md) · Lovelace-Karte: `voesendorf-waste-card` v1.2.0
+**Aktuelle Version:** [v1.3.0](https://github.com/acdcnow/voesendorf-wastecalendar/releases/tag/v1.3.0)
+· [Änderungen / Changelog](CHANGELOG.md) · Lovelace-Karte: `voesendorf-waste-card` v1.3.0
 
 **Offizielle Quelle:** <https://voesendorf.gv.at/buergerservice/muellkalender/>
 (Müllabfuhrplan als PDF, jeweils im Bereich „Downloads“)
@@ -126,12 +126,14 @@ waste_collection_schedule:
 des laufenden Jahres und braucht **keine Integration**. Sie zeigt:
 
 * die nächsten Abholungen („morgen“, „in 3 Tagen“),
-* eine Jahresübersicht in den Farben des amtlichen PDFs,
+* einen **Monatskalender** in den Farben des amtlichen PDFs – nur der aktuelle Monat,
+  durchblätterbar mit den Pfeilen neben dem Monatsnamen,
 * eine Karte mit allen drei Abfuhrgebieten (Straßen farbig, geteilte Straßen grau),
   gezeichnet aus den mitgelieferten Straßengeometrien – **ohne Kartenkacheln und ohne
   Netzzugriff**,
 * Straßen-Auswahl (wird im Browser gespeichert),
-* Zusatzinfos: Altstoffsammelzentrum, Sperrmüll, Blumenerde-Aktion.
+* Zusatzinfos (Altstoffsammelzentrum, Sperrmüll, Blumenerde-Aktion) sowie Container und
+  Hinweise – alles hinter dem Info-Symbol in der Kopfzeile, damit die Karte klein bleibt.
 
 **Einbau**
 
@@ -300,10 +302,11 @@ calendar and verified.
   `waste_collection_schedule/source/voesendorf_at.py` (`zone: oberort|unterort|seepark`).
 * **Custom Lovelace card:** copy `dist/voesendorf-waste-card.js` to `config/www/`, register it
   as a `module` resource and add `type: custom:voesendorf-waste-card` to a dashboard. The card
-  bundles the calendar data and shows the next collections, a year overview and a **tile-free**
-  map of the three collection areas - no integration required, no external requests. Real
+  bundles the calendar data and shows the next collections, a compact **single-month calendar**
+  (pageable) and a **tile-free** map of the three collection areas - no integration required,
+  no external requests. Containers, notes and extra dates open in a popup. Real
   tiles are optional via `tile_source: ha` (Home Assistant's own tile proxy) or `tile_url`.
 * **Built-in map card:** `packages/voesendorf_places.yaml` adds 14 located sensors (recycling
   centre, compost campaign, waste island, green-waste containers), see `docs/PLACES.md`.
-* **Version:** v1.2.0 - see [`CHANGELOG.md`](CHANGELOG.md) (German and English).
+* **Version:** v1.3.0 - see [`CHANGELOG.md`](CHANGELOG.md) (German and English).
 * **Which area is mine?** See the street lists above (`Oberort`, `Unterort`, `Seepark`).
