@@ -7,8 +7,10 @@
  * Features
  *   - pick your street, the card derives your collection area ("Abfuhrgebiet")
  *   - next collections with "tomorrow"/"in 3 days" hints
- *   - full-year mini calendar, colour coded like the official PDF
- *   - OpenStreetMap map with all three areas, colour coded per street
+ *   - single-month calendar, colour coded like the official PDF
+ *   - OpenStreetMap map with all three areas, colour coded per street: raster
+ *     tiles through the instance's own map tile proxy (map_tiles) by default,
+ *     or the bundled geometry drawn as SVG with tile_source: offline
  *   - works without any integration: the calendar data is bundled in this file
  *
  * The card is generated from src/ + data/ by tools/build_card.py - the two
@@ -74,6 +76,8 @@ const STRINGS = {
     allAreas: "Alle Bereiche",
     map: "Karte",
     mapHint: "Klick auf eine Straße zeigt das Abfuhrgebiet.",
+    mapHide: "Karte ausblenden",
+    mapShow: "Karte einblenden",
     mapUnavailable: "Karte nicht verfügbar (Leaflet konnte nicht geladen werden).",
     mapLoading: "Karte wird geladen …",
     mapAttribution: "Eigene Darstellung auf Basis von OpenStreetMap-Daten (ODbL)",
@@ -86,7 +90,9 @@ const STRINGS = {
     monthCurrent: "Aktueller Monat",
     close: "Schließen",
     mapTilesBlocked:
-      "Der Kachelserver hat die Anfragen blockiert (tile.openstreetmap.org ist nicht für eingebettete Karten gedacht). Es wird die Offline-Karte ohne Kacheln angezeigt.",
+      "Der Kachelserver hat die Anfragen blockiert. Es wird die Offline-Karte ohne Kacheln angezeigt.",
+    mapTilesUnavailable:
+      "Kartenkacheln konnten nicht geladen werden (Home-Assistant-Kartenproxy oder Kachelserver nicht erreichbar). Es wird die Offline-Karte ohne Kacheln angezeigt. Mit tile_source: offline lässt sich die Kachelansicht abschalten.",
     openInOsm: "In OpenStreetMap öffnen",
     legend: "Legende",
     holiday: "Feiertag",
@@ -120,6 +126,8 @@ const STRINGS = {
     allAreas: "All areas",
     map: "Map",
     mapHint: "Click a street to highlight its collection area.",
+    mapHide: "Hide map",
+    mapShow: "Show map",
     mapUnavailable: "Map unavailable (Leaflet could not be loaded).",
     mapLoading: "Loading map …",
     mapAttribution: "Own rendering based on OpenStreetMap data (ODbL)",
@@ -132,7 +140,9 @@ const STRINGS = {
     monthCurrent: "Current month",
     close: "Close",
     mapTilesBlocked:
-      "The tile server blocked the requests (tile.openstreetmap.org is not meant for embedded maps). Showing the tile-less offline map instead.",
+      "The tile server blocked the requests. Showing the tile-less offline map instead.",
+    mapTilesUnavailable:
+      "Map tiles could not be loaded (the Home Assistant map tile proxy or the tile server is not reachable). Showing the tile-less offline map instead. Set tile_source: offline to turn the tile view off.",
     openInOsm: "Open in OpenStreetMap",
     legend: "Legend",
     holiday: "Public holiday",
@@ -319,6 +329,7 @@ class VoesendorfWasteCard extends HTMLElement {
     this._map = null;
     this._layers = {};
     this._tileMode = null;
+    this._mapHidden = false;    // map collapsed by the button next to its heading
     this._darkTiles = false;
     this._haToken = "";
     this._monthOffset = 0;      // 0 = current month, the card only shows one
@@ -345,10 +356,12 @@ class VoesendorfWasteCard extends HTMLElement {
       days_ahead: 6,
       show_extras: true,
       map_height: 320,
-      tile_url: "",            // empty = offline map, no requests to any tile server
+      tile_url: "",            // own tile server, used when tile_source is not "ha"
       tile_attribution: "",
       tile_fallback: true,     // switch to the offline map if tiles are blocked
-      tile_source: "",         // "" = offline | "ha" = tiles proxied by Home Assistant | "custom"
+      tile_source: "",         // "" (default) = tiles proxied by Home Assistant
+                               // "offline" = bundled SVG map, no tiles, no network
+                               // "custom" = the URL in tile_url
       ...config,
       zone,
     };
@@ -380,7 +393,15 @@ class VoesendorfWasteCard extends HTMLElement {
   }
 
   getCardSize() {
-    return this._config && this._config.show_map ? 12 : 8;
+    return this._mapVisible() ? 12 : 8;
+  }
+
+  /**
+   * The map is shown when the configuration wants it (show_map, default true) and the
+   * user has not collapsed it with the button next to the map heading.
+   */
+  _mapVisible() {
+    return Boolean(this._config) && this._config.show_map !== false && !this._mapHidden;
   }
 
   get _zoneCount() {
@@ -409,20 +430,18 @@ class VoesendorfWasteCard extends HTMLElement {
     return zone ? { slug, ...zone } : null;
   }
 
-  _restoreState() {
-    let saved = null;
+  _readState() {
     try {
-      saved = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || "null");
+      return JSON.parse(window.localStorage.getItem(STORAGE_KEY) || "null");
     } catch (error) {
-      saved = null;
+      return null;
     }
-    if (saved?.street) this._setStreet(saved.street, false);
-    else if (saved?.zone && SCHEDULE.zones[saved.zone]) this._zone = saved.zone;
   }
 
   _saveState() {
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ zone: this._zone, street: this._street }));
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(
+        { zone: this._zone, street: this._street, mapHidden: this._mapHidden }));
     } catch (error) {
       /* private mode – ignore */
     }
@@ -487,7 +506,8 @@ class VoesendorfWasteCard extends HTMLElement {
 
   _hash() {
     return JSON.stringify([this._zone, this._street, this._lang, this._today,
-                           this._config.show_map, this._config.show_extras,
+                           this._config.show_map, this._mapHidden,
+                           this._config.show_extras,
                            this._config.tile_url, this._config.tile_source,
                            this._config.map_height, this._monthOffset,
                            this._showSettings, this._config.show_types]);
@@ -495,10 +515,10 @@ class VoesendorfWasteCard extends HTMLElement {
 
   _render() {
     if (!this._config || !this.isConnected) return;
+    this._restoreStateOnce();
     const hash = this._hash();
     if (hash === this._renderedHash && this.shadowRoot.querySelector(".card")) return;
     this._renderedHash = hash;
-    this._restoreStateOnce();
 
     if (!this._zone) {
       this.shadowRoot.innerHTML = this._shell(this._bodyAllZones());
@@ -508,7 +528,8 @@ class VoesendorfWasteCard extends HTMLElement {
     const zone = this._zoneEntry(this._zone);
     this.shadowRoot.innerHTML = this._shell(this._bodyZone(zone));
     this._attachHandlers();
-    if (this._config.show_map) this._renderMap(zone);
+    if (this._mapVisible()) this._renderMap(zone);
+    else this._disposeMap();
     if (this._detailsOpen) {
       const dialog = this.shadowRoot.getElementById("details");
       if (dialog) dialog.showModal();
@@ -518,7 +539,14 @@ class VoesendorfWasteCard extends HTMLElement {
   _restoreStateOnce() {
     if (this._restored) return;
     this._restored = true;
-    if (!this._zone && !this._street) this._restoreState();
+    const saved = this._readState();
+    // Hiding the map is a pure display choice, so it is restored even when zone or
+    // street come from the dashboard configuration.
+    if (typeof saved?.mapHidden === "boolean") this._mapHidden = saved.mapHidden;
+    if (!this._zone && !this._street) {
+      if (saved?.street) this._setStreet(saved.street, false);
+      else if (saved?.zone && SCHEDULE.zones[saved.zone]) this._zone = saved.zone;
+    }
     if (!this._zone) {
       // nothing chosen yet: keep "all areas" overview but remember the state
       this._saveState();
@@ -614,6 +642,9 @@ class VoesendorfWasteCard extends HTMLElement {
         .map-attr { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; }
         .notice { margin-top: 8px; padding: 8px 10px; border-radius: 8px; font-size: .85rem;
                   background: rgba(217,83,79,.12); color: var(--primary-text-color); }
+        .map-head { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline;
+                    justify-content: space-between; }
+        .map-head h3 { margin-bottom: 0; }
         .info-list { margin: 6px 0 0; padding-left: 18px; }
         .info-list li { margin-bottom: 2px; }
         footer { margin-top: 16px; display: flex; justify-content: space-between; gap: 12px;
@@ -745,8 +776,13 @@ class VoesendorfWasteCard extends HTMLElement {
       <div class="legend"><span><span class="swatch" style="background:#d9534f"></span>${this._t("holiday")}</span>
         <span><span class="swatch" style="box-shadow:inset 0 0 0 2px var(--primary-color)"></span>${this._t("today")}</span></div>
       ${this._config.show_map ? `
-        <h3>${this._t("map")} <span class="muted" style="font-weight:400">– ${this._t("mapHint")}</span></h3>
-        <div id="map-wrap"><div id="map"></div><div class="map-foot" id="map-foot"></div></div>` : ""}
+        <div class="map-head">
+          <h3>${this._t("map")}${this._mapHidden ? "" :
+            ` <span class="muted" style="font-weight:400">– ${this._t("mapHint")}</span>`}</h3>
+          <button class="ghost" id="map-toggle">${this._t(this._mapHidden ? "mapShow" : "mapHide")}</button>
+        </div>
+        ${this._mapHidden ? "" :
+          `<div id="map-wrap"><div id="map"></div><div class="map-foot" id="map-foot"></div></div>`}` : ""}
       ${this._monthSection(dateMapZone)}
       <footer>
         <span><a href="${SCHEDULE.sources.info_page}" target="_blank" rel="noopener">
@@ -918,6 +954,15 @@ class VoesendorfWasteCard extends HTMLElement {
       this._renderedHash = null;
       this._render();
     });
+
+    // Collapse the map without touching the dashboard configuration; the choice is
+    // remembered in the browser, just like the selected street and area.
+    this.shadowRoot.getElementById("map-toggle")?.addEventListener("click", () => {
+      this._mapHidden = !this._mapHidden;
+      this._saveState();
+      this._renderedHash = null;
+      this._render();
+    });
   }
 
   /* ------------------------------------------------------------------ map */
@@ -952,21 +997,16 @@ class VoesendorfWasteCard extends HTMLElement {
   async _renderMap(zone) {
     const container = this.shadowRoot.getElementById("map");
     if (!container) return;
-    if (this._map) {
-      this._map.remove();
-      this._map = null;
-    }
-    if (this._resizeObserver) {
-      this._resizeObserver.disconnect();
-      this._resizeObserver = null;
-    }
-    // Default: no external requests at all. tile.openstreetmap.org is not intended for
-    // embedded maps and blocks them, so tiles only load when they are asked for:
-    // either tile_source: ha (Home Assistant proxies and caches the OSM tiles behind a
-    // rotating token, sending the User-Agent OSM asks for) or a custom tile_url.
+    this._disposeMap();
+    // Default: real raster tiles through the instance's own map tile proxy. Core
+    // fetches and caches the OpenStreetMap tiles server-side, with the identifying
+    // User-Agent the OSM tile policy asks for (which a browser cannot send) and
+    // behind a rotating token - so the anti-abuse block that hits direct requests to
+    // tile.openstreetmap.org does not apply. tile_source: offline switches to the
+    // bundled SVG drawing, which needs no network at all.
     const source = this._tileSource();
     if (source === "offline") {
-      this._renderOfflineMap(container, zone, false);
+      this._renderOfflineMap(container, zone);
       return;
     }
     container.classList.remove("offline");
@@ -978,7 +1018,7 @@ class VoesendorfWasteCard extends HTMLElement {
         token = await this._haTilesToken(false);
       } catch (error) {
         // No proxy (older Home Assistant) or no connection: stay dependable.
-        this._renderOfflineMap(container, zone, false);
+        this._renderOfflineMap(container, zone, this._t("mapTilesUnavailable"));
         return;
       }
     }
@@ -986,7 +1026,7 @@ class VoesendorfWasteCard extends HTMLElement {
     try {
       L = await ensureLeaflet();
     } catch (error) {
-      this._renderOfflineMap(container, zone, false);
+      this._renderOfflineMap(container, zone, this._t("mapUnavailable"));
       return;
     }
     this._leafletCss = await ensureLeafletCss();
@@ -1030,7 +1070,8 @@ class VoesendorfWasteCard extends HTMLElement {
       }
       if (this._config.tile_fallback) {
         layer.off("tileerror");
-        this._renderOfflineMap(container, zone, true);
+        this._renderOfflineMap(container, zone,
+          this._t(source === "ha" ? "mapTilesUnavailable" : "mapTilesBlocked"));
       }
     });
 
@@ -1106,10 +1147,10 @@ class VoesendorfWasteCard extends HTMLElement {
 
   /**
    * Tile-less map: the bundled street geometry is drawn as SVG. No network access,
-   * nothing to be blocked - this is the default because tile.openstreetmap.org
-   * blocks embedded/third-party usage.
+   * nothing to be blocked - used for tile_source: offline and as the fallback when
+   * the tiles cannot be loaded (notice explains why).
    */
-  _renderOfflineMap(container, zone, tilesBlocked) {
+  _renderOfflineMap(container, zone, notice = "") {
     const { all, focus } = this._mapPoints(zone.slug);
     const use = focus.length > 8 ? focus : all;
     if (!use.length) {
@@ -1207,22 +1248,30 @@ class VoesendorfWasteCard extends HTMLElement {
     this._renderMapFoot(zone, `${this._t("mapAttribution")} · ${this._t("mapOffline")}`, {
       link: `<a href="https://www.openstreetmap.org/#map=14/${centre[0].toFixed(5)}/${centre[1].toFixed(5)}"` +
         ` target="_blank" rel="noopener">${this._t("openInOsm")}</a>`,
-      notice: tilesBlocked ? this._t("mapTilesBlocked") : "",
+      notice,
     });
   }
 
-  /** Tile mode requested by the configuration. */
+  /**
+   * Tile mode requested by the configuration. Tiles are the default: the map is only
+   * drawn from the bundled geometry when the configuration asks for it
+   * (tile_source: offline) or when a tile source fails.
+   */
   _tileSource() {
-    if ((this._config.tile_source || "").toLowerCase() === "ha") return "ha";
+    const requested = String(this._config.tile_source ?? "").trim().toLowerCase();
+    if (["offline", "none", "off", "false"].includes(requested)) return "offline";
+    if (requested === "ha") return "ha";
+    if (requested === "custom") return this._config.tile_url ? "custom" : "offline";
     if (this._config.tile_url) return "custom";
-    return "offline";
+    return "ha";
   }
 
   /**
-   * The built-in map does not load tiles from OpenStreetMap directly: core proxies
-   * and caches them and sends the identifying User-Agent that the OSM tile policy
-   * asks for, which a browser cannot send. Asking the instance for a token therefore
-   * gives us the same tiles without ever tripping the anti-abuse block.
+   * The map does not load tiles from OpenStreetMap directly: core proxies and caches
+   * them and sends the identifying User-Agent that the OSM tile policy asks for,
+   * which a browser cannot send. Asking the instance for a token therefore gives us
+   * the same tiles the built-in map card shows, without tripping the anti-abuse
+   * block - this is the default tile source.
    */
   async _haTilesToken(force) {
     const connection = this._hass && this._hass.connection;
@@ -1267,12 +1316,21 @@ class VoesendorfWasteCard extends HTMLElement {
     });
   }
 
-  disconnectedCallback() {
-    if (this._resizeObserver) this._resizeObserver.disconnect();
+  /** Drop the Leaflet instance and its observer (map hidden, re-rendered or removed). */
+  _disposeMap() {
+    if (this._resizeObserver) {
+      this._resizeObserver.disconnect();
+      this._resizeObserver = null;
+    }
     if (this._map) {
       this._map.remove();
       this._map = null;
     }
+    this._tileMode = null;
+  }
+
+  disconnectedCallback() {
+    this._disposeMap();
   }
 }
 

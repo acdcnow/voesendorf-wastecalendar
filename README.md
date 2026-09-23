@@ -4,8 +4,8 @@ Aufbereitete Müllabfuhr-Termine der Marktgemeinde **Vösendorf** (2331, Nieder�
 als ICS-Kalender, JSON-Datensatz und fertige Home-Assistant-Karte mit Karte der drei
 Abfuhrgebiete.
 
-**Aktuelle Version:** [v1.3.0](https://github.com/acdcnow/voesendorf-wastecalendar/releases/tag/v1.3.0)
-· [Änderungen / Changelog](CHANGELOG.md) · Lovelace-Karte: `voesendorf-waste-card` v1.3.0
+**Aktuelle Version:** [v1.4.0](https://github.com/acdcnow/voesendorf-wastecalendar/releases/tag/v1.4.0)
+· [Änderungen / Changelog](CHANGELOG.md) · Lovelace-Karte: `voesendorf-waste-card` v1.4.0
 
 **Offizielle Quelle:** <https://voesendorf.gv.at/buergerservice/muellkalender/>
 (Müllabfuhrplan als PDF, jeweils im Bereich „Downloads“)
@@ -128,9 +128,12 @@ des laufenden Jahres und braucht **keine Integration**. Sie zeigt:
 * die nächsten Abholungen („morgen“, „in 3 Tagen“),
 * einen **Monatskalender** in den Farben des amtlichen PDFs – nur der aktuelle Monat,
   durchblätterbar mit den Pfeilen neben dem Monatsnamen,
-* eine Karte mit allen drei Abfuhrgebieten (Straßen farbig, geteilte Straßen grau),
-  gezeichnet aus den mitgelieferten Straßengeometrien – **ohne Kartenkacheln und ohne
-  Netzzugriff**,
+* eine Karte mit allen drei Abfuhrgebieten (Straßen farbig, geteilte Straßen grau) auf
+  **echten OpenStreetMap-Kacheln**, die die eigene Home-Assistant-Instanz über den
+  Kartenproxy (`map_tiles`) ausliefert – mit `tile_source: offline` stattdessen die
+  mitgelieferten Straßengeometrien ohne Kacheln und ohne Netzzugriff. Die Karte lässt
+  sich am Dashboard mit einem Knopf aus- und wieder einblenden (Zustand wird im Browser
+  gespeichert), mit `show_map: false` entfällt sie ganz,
 * Straßen-Auswahl (wird im Browser gespeichert),
 * Zusatzinfos (Altstoffsammelzentrum, Sperrmüll, Blumenerde-Aktion) sowie Container und
   Hinweise – alles hinter dem Info-Symbol in der Kopfzeile, damit die Karte klein bleibt.
@@ -154,24 +157,23 @@ des laufenden Jahres und braucht **keine Integration**. Sie zeigt:
    street: Marktstraße     # optional: die Straße bestimmt das Gebiet automatisch
    show_map: true
    days_ahead: 6
-   # tile_source: ha      # optional: echte Kartenkacheln über den HA-Proxy (s. u.)
+   # tile_source: offline # optional: ohne Kacheln, Karte selbst gezeichnet (s. u.)
    ```
 
-> **Warum keine Kartenkacheln?** Die freiwillig betriebenen Server von
-> `tile.openstreetmap.org` sind nicht für eingebettete Karten gedacht und sperren solche
-> Anfragen ([osm.wiki/Blocked](https://osm.wiki/Blocked)). Die Karte zeichnet die Straßen
-> daher selbst – offline und ohne Sperre. Echte Kacheln sind trotzdem möglich: mit
-> `tile_url` (z. B. eigener Tile-Server oder ein Anbieter, dessen Nutzungsbedingungen
-> eingebettete Karten erlauben) wird Leaflet geladen; blockiert der Server, fällt die
-> Karte automatisch auf die Offline-Darstellung zurück. Details in
-> [`docs/CARD.md`](docs/CARD.md).
+> **Kartenkacheln kommen aus der eigenen Instanz (Standard).** Die Karte lädt keine
+> Kacheln direkt bei `tile.openstreetmap.org` – die freiwillig betriebenen OSM-Server sind
+> nicht für eingebettete Karten gedacht und sperren solche Anfragen
+> ([osm.wiki/Blocked](https://osm.wiki/Blocked)). Sie holt sich stattdessen – genau wie die
+> eingebaute Kartenkarte – über `map_tiles/access_token` den Token des Kartenproxys
+> (rotiert alle 30 Minuten) und lädt `/api/map_tiles/raster/{z}/{x}/{y}.png?token=…`.
+> Core ruft die OSM-Kacheln serverseitig mit identifizierendem `User-Agent` ab und cacht
+> sie. Ist das nicht möglich (ältere Version, keine Verbindung, Kacheln nicht erreichbar),
+> zeichnet die Karte die Straßen selbst und weist unter der Karte darauf hin.
 
-> **Echte Kacheln in der eigenen Karte?** Mit `tile_source: ha` holt sich die Karte den
-> Token des eingebauten Kartenproxys (`map_tiles/access_token`) und lädt
-> `/api/map_tiles/raster/{z}/{x}/{y}.png?token=…` – dieselben Kacheln wie die eingebaute
-> Karte, ohne direkten Kontakt zu OSM. Der Token rotiert alle 30 Minuten, die Karte holt
-> ihn bei Bedarf neu; scheitert es trotzdem, fällt sie automatisch auf die Offline-Karte
-> zurück.
+> **Ganz ohne Netzzugriff?** Mit `tile_source: offline` entfallen Kacheln und
+> Leaflet-Download: die Straßen der drei Gebiete werden aus den mitgelieferten
+> Geometrien (`data/streets.geojson`) als SVG gezeichnet. Ein eigener Kachelserver lässt
+> sich über `tile_url` eintragen. Details in [`docs/CARD.md`](docs/CARD.md).
 
 Alle Optionen stehen in [`docs/CARD.md`](docs/CARD.md).
 
@@ -303,10 +305,12 @@ calendar and verified.
 * **Custom Lovelace card:** copy `dist/voesendorf-waste-card.js` to `config/www/`, register it
   as a `module` resource and add `type: custom:voesendorf-waste-card` to a dashboard. The card
   bundles the calendar data and shows the next collections, a compact **single-month calendar**
-  (pageable) and a **tile-free** map of the three collection areas - no integration required,
-  no external requests. Containers, notes and extra dates open in a popup. Real
-  tiles are optional via `tile_source: ha` (Home Assistant's own tile proxy) or `tile_url`.
+  (pageable) and a map of the three collection areas on **real OpenStreetMap tiles served by
+  your own Home Assistant instance** (`map_tiles` - the same proxy the built-in map card uses),
+  so no integration is required and the OSM anti-abuse block never applies. Use
+  `tile_source: offline` for the bundled tile-free SVG drawing (no network at all), or
+  `tile_url` for your own tile server. Containers, notes and extra dates open in a popup.
 * **Built-in map card:** `packages/voesendorf_places.yaml` adds 14 located sensors (recycling
   centre, compost campaign, waste island, green-waste containers), see `docs/PLACES.md`.
-* **Version:** v1.3.0 - see [`CHANGELOG.md`](CHANGELOG.md) (German and English).
+* **Version:** v1.4.0 - see [`CHANGELOG.md`](CHANGELOG.md) (German and English).
 * **Which area is mine?** See the street lists above (`Oberort`, `Unterort`, `Seepark`).

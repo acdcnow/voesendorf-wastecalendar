@@ -5,6 +5,78 @@ Versionen folgen [SemVer](https://semver.org/lang/de/).
 
 ---
 
+## [1.4.0] – 2026-09-24
+
+### Deutsch
+
+**Geändert**
+
+* **Kartenkacheln sind jetzt der Standard.** Die Lovelace-Karte zeichnet die Karte nicht
+  mehr von sich aus, sondern lädt echte OpenStreetMap-Kacheln – über den Kartenproxy der
+  eigenen Home-Assistant-Instanz (`map_tiles`, wie die eingebaute Kartenkarte): Token von
+  `map_tiles/access_token` (rotiert alle 30 Minuten), Kacheln von
+  `/api/map_tiles/raster/{z}/{x}/{y}.png?token=…`. Core ruft sie serverseitig mit
+  identifizierendem `User-Agent` ab und cacht sie, deshalb greift die Sperre für
+  eingebettete Karten nicht mehr. Konfiguration ist dafür nicht nötig – es genügt
+  Home Assistant 2026.9 oder neuer.
+
+**Neu**
+
+* **`tile_source: offline`** schaltet die Kacheln ab: die Straßen der drei Gebiete werden
+  dann aus den mitgelieferten Geometrien als SVG gezeichnet – ohne Netzzugriff und ohne
+  Leaflet-Download. `tile_source: custom` (zusammen mit `tile_url`) bleibt für einen
+  eigenen Kachelserver.
+* **Karte aus- und einblenden.** Neben der Kartenüberschrift sitzt jetzt ein Knopf
+  *Karte ausblenden* / *Karte einblenden*. Er zuklappt die Karte samt Legende und
+  Hinweisen – ohne die Dashboard-Konfiguration zu ändern – und merkt sich die Wahl im
+  Browser (wie schon Straße und Gebiet). `show_map: false` lässt die Karte weiterhin
+  ganz weg.
+* Scheitert der Kartenproxy oder die Kachelauslieferung, zeigt die Karte automatisch die
+  Offline-Darstellung und **erklärt im Hinweis unter der Karte, warum** (Kartenproxy nicht
+  erreichbar bzw. Kachelserver blockiert). Vorher passierte das ohne Hinweis.
+
+**Hinweise**
+
+* Bestehende Karten ohne `tile_source` zeigen ab dieser Version Kacheln. Wer die reine
+  Offline-Karte will, setzt `tile_source: offline`.
+* Die Karte setzt **Home Assistant 2026.9 oder neuer** voraus (`hacs.json`).
+
+### English
+
+**Changed**
+
+* **Map tiles are now the default.** The Lovelace card no longer draws the map on its own
+  by default – it loads real OpenStreetMap tiles through your own Home Assistant
+  instance's map tile proxy (`map_tiles`, the same one the built-in map card uses): token
+  from `map_tiles/access_token` (rotates every 30 minutes), tiles from
+  `/api/map_tiles/raster/{z}/{x}/{y}.png?token=…`. Core fetches them server-side with an
+  identifying `User-Agent` and caches them, so the embedded-map block never applies. No
+  configuration needed – Home Assistant 2026.9 or newer is enough.
+
+**New**
+
+* **`tile_source: offline`** turns the tiles off: the streets of the three collection
+  areas are then drawn from the bundled geometry as SVG – no network access, no Leaflet
+  download. `tile_source: custom` (together with `tile_url`) still points at your own tile
+  server.
+* **Hide/show the map.** A button next to the map heading (*Hide map* / *Show map*)
+  collapses the map together with its legend and notices – without touching the dashboard
+  configuration – and remembers the choice in the browser (like street and area already).
+  `show_map: false` still removes the map entirely.
+* If the tile proxy or the tile delivery fails, the card automatically shows the offline
+  rendering and **explains why in the notice below the map** (tile proxy not reachable or
+  tile server blocked). Previously this happened silently.
+
+**Notes**
+
+* Existing cards without `tile_source` show tiles from this version on. Set
+  `tile_source: offline` for the tile-less rendering.
+* The card still requires **Home Assistant 2026.9 or newer** (`hacs.json`).
+
+[1.4.0]: https://github.com/acdcnow/voesendorf-wastecalendar/releases/tag/v1.4.0
+
+---
+
 ## [1.3.0] – 2026-09-20
 
 ### Deutsch

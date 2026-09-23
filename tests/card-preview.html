@@ -37,9 +37,11 @@
     <button data-street="Ortsstraße 71">Ortsstraße (geteilt)</button>
     <button data-street="Anton-Benya-Straße">Anton-Benya-Straße</button>
     <button data-zone="">Alle Bereiche</button>
-    <button data-tiles="https://tile.openstreetmap.org/{z}/{x}/{y}.png">Mit OSM-Kacheln</button>
-    <button data-tilesource="ha">Mit HA-Kachelproxy</button>
+    <button data-tilesource="ha">Mit HA-Kachelproxy (Standard)</button>
+    <button data-tilesource="offline">Offline-Karte (ohne Kacheln)</button>
+    <button data-tiles="https://tile.openstreetmap.org/{z}/{x}/{y}.png">Mit OSM-Kacheln (direkt)</button>
     <button data-tiles="https://127.0.0.1:9/{z}/{x}/{y}.png">Mit kaputtem Kachelserver</button>
+    <button data-noconnection="1" data-zone="oberort">Ohne HA-Verbindung (kein Proxy)</button>
   </div>
   <div id="card"></div>
 
@@ -93,7 +95,9 @@
           config.tile_source = button.dataset.tilesource;
         }
         next.setConfig(config);
-        next.hass = hass;
+        // The default card (no tile_source) must use the HA tile proxy; the
+        // "no connection" button simulates an instance without the proxy.
+        next.hass = button.dataset.noconnection ? { ...hass, connection: null } : hass;
         const host = document.getElementById("card");
         host.innerHTML = "";
         host.appendChild(next);
