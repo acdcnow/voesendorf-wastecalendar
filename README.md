@@ -1,8 +1,8 @@
 # Abfallkalender Vösendorf (Müllabfuhr-Termine 2026)
 
 Aufbereitete Müllabfuhr-Termine der Marktgemeinde **Vösendorf** (2331, Niederösterreich) –
-als ICS-Kalender, JSON-Datensatz und fertige Home-Assistant-Karte mit Karte der drei
-Abfuhrgebiete.
+als ICS-Kalender, JSON-Datensatz und fertige Home-Assistant-Karte mit Terminen,
+Monatsansicht, Straßenauswahl und Zusatzinfos.
 
 **Aktuelle Version:** [v2.0.0](https://github.com/acdcnow/voesendorf-wastecalendar/releases/tag/v2.0.0)
 · [Änderungen / Changelog](CHANGELOG.md) · Lovelace-Karte: `voesendorf-waste-card` v2.0.0
@@ -120,7 +120,7 @@ waste_collection_schedule:
         zone: oberort      # oberort | unterort | seepark
 ```
 
-### Variante D – Eigene Lovelace-Karte (mit Karte der Gebiete)
+### Variante D – Eigene Lovelace-Karte (Kalender, Straßenauswahl, Details)
 
 `dist/voesendorf-waste-card.js` ist eine **eigenständige Karte**: sie enthält die Termine
 des laufenden Jahres und braucht **keine Integration**. Sie zeigt:
@@ -274,7 +274,7 @@ Für ein neues Jahr außerdem anzupassen:
 * Straßengeometrien (`data/streets.geojson`, Grundlage für die Standort-Ermittlung):
   © OpenStreetMap-Mitwirkende, [ODbL](https://www.openstreetmap.org/copyright), abgefragt
   über die Overpass-API
-* Lizenz dieses Repositories: MIT (siehe [`LICENSE`](LICENSE))
+* Lizenz dieses Repositories: GNU GPL v3.0 (siehe [`LICENSE`](LICENSE))
 
 ## English quick start
 

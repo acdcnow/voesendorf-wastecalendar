@@ -15,7 +15,7 @@
  * The card is generated from src/ + data/ by tools/build_card.py - the
  * placeholder below is replaced with the real data at build time.
  *
- * Licence: MIT.
+ * Licence: GNU General Public License v3.0 (see LICENSE).
  */
 
 const VERSION = "2.0.0";
