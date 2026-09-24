@@ -5,6 +5,55 @@ Versionen folgen [SemVer](https://semver.org/lang/de/).
 
 ---
 
+## [2.0.0] – 2026-09-24
+
+### Deutsch
+
+**Entfernt (BREAKING)**
+
+* **Die Karte ist aus der Lovelace-Karte entfernt.** Weder Kartenkacheln noch Leaflet noch
+  die aus den Straßengeometrien gezeichnete Ersatzkarte: die Karte braucht keine
+  Internetverbindung, keinen Kartenproxy und kein CDN mehr. Sie lädt damit nichts nach außen
+  und kann nicht mehr leer bleiben – genau das war zuletzt passiert: Leaflet maß den
+  Kartenbereich mit 0 px Breite und am Ende war nur noch sein eigener Hinweis mit dem kleinen
+  blau-gelben Flaggen-Symbol zu sehen.
+* **Entfernte Optionen:** `show_map`, `map_height`, `tile_source`, `tile_url`,
+  `tile_attribution`, `tile_fallback`. Solche Angaben in einer bestehenden
+  Dashboard-Konfiguration werden ignoriert (Home Assistant meldet unbekannte Optionen nicht
+  als Fehler) und können gelöscht werden.
+* **Unverändert** bleiben die nächsten Abholungen, die Monatsansicht, die Straßenauswahl
+  (sie sagt weiter, welches Abfuhrgebiet zu deiner Straße gehört) und die Details im Popup.
+* `dist/voesendorf-waste-card.js` ist dadurch von 139 kB auf 41 kB geschrumpft (die
+  Straßengeometrien und der Leaflet-Code werden nicht mehr gebraucht); `tools/build_card.py`
+  bettet keine Geometrie mehr ein.
+* **Karte gewünscht?** Die mitgelieferten Sammelstellen (ASZ, Müllinseln,
+  Grünschnittcontainer) lassen sich mit der **eingebauten Kartenkarte** anzeigen – Paket und
+  Anleitung: `packages/voesendorf_places.yaml` und `docs/PLACES.md`.
+
+### English
+
+**Removed (BREAKING)**
+
+* **The map has been removed from the Lovelace card.** Neither map tiles nor Leaflet nor the
+  fallback drawing of the bundled street geometry: the card no longer needs a network
+  connection, a map proxy or a CDN. It therefore loads nothing from outside and can no longer
+  stay empty – which is exactly what happened last: Leaflet measured the map area as 0 px wide
+  and all that was left was its own attribution with the little blue/yellow flag logo.
+* **Removed options:** `show_map`, `map_height`, `tile_source`, `tile_url`,
+  `tile_attribution`, `tile_fallback`. Such entries in an existing dashboard configuration are
+  ignored (Home Assistant does not report unknown options as errors) and can be deleted.
+* **Unchanged:** the next collections, the month view, the street picker (it still tells you
+  which collection area your street belongs to) and the details popup.
+* `dist/voesendorf-waste-card.js` shrank from 139 kB to 41 kB (the street geometry and the
+  Leaflet code are gone); `tools/build_card.py` no longer inlines any geometry.
+* **Need a map?** The bundled collection points (recycling centre, waste islands, green-waste
+  containers) can be shown with the **built-in map card** – package and instructions:
+  `packages/voesendorf_places.yaml` and `docs/PLACES.md`.
+
+[2.0.0]: https://github.com/acdcnow/voesendorf-wastecalendar/releases/tag/v2.0.0
+
+---
+
 ## [1.4.1] – 2026-09-24
 
 ### Deutsch

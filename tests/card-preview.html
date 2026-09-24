@@ -37,11 +37,8 @@
     <button data-street="Ortsstraße 71">Ortsstraße (geteilt)</button>
     <button data-street="Anton-Benya-Straße">Anton-Benya-Straße</button>
     <button data-zone="">Alle Bereiche</button>
-    <button data-tilesource="ha">Mit HA-Kachelproxy (Standard)</button>
-    <button data-tilesource="offline">Offline-Karte (ohne Kacheln)</button>
-    <button data-tiles="https://tile.openstreetmap.org/{z}/{x}/{y}.png">Mit OSM-Kacheln (direkt)</button>
-    <button data-tiles="https://127.0.0.1:9/{z}/{x}/{y}.png">Mit kaputtem Kachelserver</button>
-    <button data-noconnection="1" data-zone="oberort">Ohne HA-Verbindung (kein Proxy)</button>
+    <button data-lang="en">English</button>
+    <button data-lang="de">Deutsch</button>
   </div>
   <div id="card"></div>
 
@@ -58,21 +55,13 @@
   </script>
   <script type="module" src="../dist/voesendorf-waste-card.js"></script>
   <script type="module">
-    const haCommands = [];
-    const hass = {
-      locale: { language: "de" },
-      language: "de",
+    const hassFor = (lang) => ({
+      locale: { language: lang },
+      language: lang,
       states: {},
       themes: { darkMode: false },
-      connection: {
-        sendMessagePromise: (msg) => {
-          haCommands.push(msg.type);
-          return Promise.resolve({ token: "harness-token" });
-        },
-      },
-      callService: () => Promise.resolve(),
-    };
-    window.__haCommands = haCommands;
+    });
+    const hass = hassFor("de");
     const card = document.createElement("voesendorf-waste-card");
     card.setConfig({ type: "custom:voesendorf-waste-card", zone: "oberort" });
     card.hass = hass;
@@ -85,19 +74,8 @@
         if (button.dataset.zone) config.zone = button.dataset.zone;
         else config.zone = "auto";
         if (button.dataset.street) config.street = button.dataset.street;
-        if (button.dataset.tiles) {
-          config.zone = "oberort";
-          config.tile_url = button.dataset.tiles;
-          config.tile_attribution = "OpenStreetMap";
-        }
-        if (button.dataset.tilesource) {
-          config.zone = "oberort";
-          config.tile_source = button.dataset.tilesource;
-        }
         next.setConfig(config);
-        // The default card (no tile_source) must use the HA tile proxy; the
-        // "no connection" button simulates an instance without the proxy.
-        next.hass = button.dataset.noconnection ? { ...hass, connection: null } : hass;
+        next.hass = hassFor(button.dataset.lang || "de");
         const host = document.getElementById("card");
         host.innerHTML = "";
         host.appendChild(next);
