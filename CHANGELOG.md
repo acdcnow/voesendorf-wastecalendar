@@ -5,6 +5,45 @@ Versionen folgen [SemVer](https://semver.org/lang/de/).
 
 ---
 
+## [1.4.1] – 2026-09-24
+
+### Deutsch
+
+**Behoben**
+
+* **Leere Karte (nur der Leaflet-Hinweis mit seinem Flaggen-Symbol war zu sehen).** Wird die
+  Karte gerendert, bevor das Dashboard den Kartenbereich gelayoutet hat, misst Leaflet ihn mit
+  0 px Breite. Dann fordert Leaflet überhaupt keine Kachel an – es kann also auch keine
+  fehlschlagen – und weil die Ansicht nie gesetzt wurde, war auch `invalidateSize()` wirkungslos
+  (es tut bis zum ersten `setView` nichts). Ergebnis: ein leerer Kasten, in dem nur der
+  Leaflet-Hinweis unten rechts mit seinem kleinen blau-gelben Flaggen-Symbol stand; der
+  automatische Rückfall auf die Offline-Karte griff nicht.
+* **Jetzt wartet die Karte auf eine nutzbare Größe**, bevor Leaflet sie erstellt, holt das
+  Anpassen der Ansicht bei einer späteren Größenänderung nach und schaltet nach 5 Sekunden
+  ohne eine einzige geladene Kachel auf die Offline-Karte zurück – samt Hinweis, warum.
+* Wird die Karte währenddessen neu aufgebaut (Gebietswechsel, Neuzeichnen), kann der ältere
+  Aufbau den neueren nicht mehr überschreiben.
+
+### English
+
+**Fixed**
+
+* **Empty map (only Leaflet's attribution, including its flag logo, was visible).** When the
+  card renders before the dashboard has laid out the map area, Leaflet measures it as 0 px
+  wide. It then requests no tile at all – so none can fail – and because no view was ever set,
+  `invalidateSize()` did nothing either (it is a no-op until the first `setView`). The result
+  was an empty box showing only Leaflet's attribution with its small blue/yellow flag, and the
+  automatic fallback to the offline map never ran.
+* **The map now waits for a usable size** before Leaflet is created, re-fits the view when the
+  size appears later, and switches to the offline map (with a notice explaining why) after
+  5 seconds without a single loaded tile.
+* A re-render during that time (area change, redraw) can no longer be overwritten by the
+  older run.
+
+[1.4.1]: https://github.com/acdcnow/voesendorf-wastecalendar/releases/tag/v1.4.1
+
+---
+
 ## [1.4.0] – 2026-09-24
 
 ### Deutsch

@@ -330,6 +330,9 @@ class VoesendorfWasteCard extends HTMLElement {
     this._layers = {};
     this._tileMode = null;
     this._mapHidden = false;    // map collapsed by the button next to its heading
+    this._mapSeq = 0;           // guards against overlapping _renderMap() runs
+    this._tileWatchdog = null;  // timer that catches an empty tile map
+    this._viewApplied = false;  // true once the map has been fitted to the data
     this._darkTiles = false;
     this._haToken = "";
     this._monthOffset = 0;      // 0 = current month, the card only shows one
@@ -998,6 +1001,7 @@ class VoesendorfWasteCard extends HTMLElement {
     const container = this.shadowRoot.getElementById("map");
     if (!container) return;
     this._disposeMap();
+    const seq = (this._mapSeq += 1);
     // Default: real raster tiles through the instance's own map tile proxy. Core
     // fetches and caches the OpenStreetMap tiles server-side, with the identifying
     // User-Agent the OSM tile policy asks for (which a browser cannot send) and
@@ -1018,6 +1022,7 @@ class VoesendorfWasteCard extends HTMLElement {
         token = await this._haTilesToken(false);
       } catch (error) {
         // No proxy (older Home Assistant) or no connection: stay dependable.
+        if (seq !== this._mapSeq) return;
         this._renderOfflineMap(container, zone, this._t("mapTilesUnavailable"));
         return;
       }
@@ -1026,10 +1031,18 @@ class VoesendorfWasteCard extends HTMLElement {
     try {
       L = await ensureLeaflet();
     } catch (error) {
+      if (seq !== this._mapSeq) return;
       this._renderOfflineMap(container, zone, this._t("mapUnavailable"));
       return;
     }
     this._leafletCss = await ensureLeafletCss();
+    if (seq !== this._mapSeq) return;
+    // The card can be rendered before the dashboard has laid it out. Leaflet measures
+    // the container when the map is created: with 0 px it requests no tile at all, no
+    // tile can fail, and the map stays an empty box that shows nothing but Leaflet's
+    // attribution - including its small blue/yellow flag. So wait for a usable size.
+    await this._waitForSize(container);
+    if (seq !== this._mapSeq) return;
     this._applyLeafletCss();
     container.innerHTML = "";
     this._tileMode = source;
@@ -1125,7 +1138,7 @@ class VoesendorfWasteCard extends HTMLElement {
 
     // The card was just rendered, so the container may not have its final size yet.
     // fitBounds() would then compute a wrong zoom, so the view is applied explicitly
-    // as soon as a sane size is known (checked again on the first resize).
+    // as soon as a sane size is known (retried, and again on the first resize).
     const target = zoneBounds.length > 4 ? zoneBounds : bounds;
     const applyView = () => {
       const size = map.getSize();
@@ -1133,16 +1146,59 @@ class VoesendorfWasteCard extends HTMLElement {
       const box = L.latLngBounds(target);
       map.setView(box.getCenter(), map.getBoundsZoom(box, false, L.point(24, 24)),
                   { animate: false });
+      this._viewApplied = true;
       return true;
     };
-    if (!applyView()) setTimeout(applyView, 150);
+    let viewAttempts = 0;
+    const settleView = () => {
+      if (this._viewApplied) return;
+      if (applyView()) return;
+      if (viewAttempts++ < 20) setTimeout(settleView, 150);
+    };
+    settleView();
 
     this._resizeObserver = new ResizeObserver(() => {
-      map.invalidateSize();
-      if (!this._viewApplied) this._viewApplied = applyView();
+      // invalidateSize() does nothing until the map has a view (Leaflet sets its
+      // internal _loaded in setView), so an unsized map is fixed by fitting it.
+      if (this._viewApplied) map.invalidateSize();
+      else applyView();
     });
     this._resizeObserver.observe(container);
     map.on("dragstart", () => { this._viewApplied = true; });
+
+    // An empty map is the worst outcome, so the tiles are checked once: if not a single
+    // one finished loading, the offline map takes over (with an explanation).
+    if (this._tileWatchdog) clearTimeout(this._tileWatchdog);
+    this._tileWatchdog = setTimeout(() => {
+      if (this._map !== map || this._tileMode !== source) return;
+      if (!this._viewApplied) return;                // still settling, keep waiting
+      if (container.querySelector("img.leaflet-tile-loaded")) return;
+      if (!this._config.tile_fallback) return;
+      layer.off("tileerror");
+      this._renderOfflineMap(container, zone,
+        this._t(source === "ha" ? "mapTilesUnavailable" : "mapTilesBlocked"));
+    }, 5000);
+  }
+
+  /**
+   * Wait for a container that Leaflet can measure (see _renderMap). The size is checked
+   * synchronously first, so the normal case does not wait at all; only a card that is not
+   * laid out yet is polled. Timers are used instead of requestAnimationFrame, which never
+   * fires while the page is not being rendered - a card that is set up in a hidden view
+   * would otherwise stay in its loading state forever.
+   */
+  _waitForSize(container, attempts = 20) {
+    const usable = () => container.isConnected &&
+      container.clientWidth >= 80 && container.clientHeight >= 40;
+    if (usable()) return Promise.resolve(true);
+    return new Promise((resolve) => {
+      const check = (left) => {
+        if (usable()) { resolve(true); return; }
+        if (!container.isConnected || left <= 0) { resolve(false); return; }
+        setTimeout(() => check(left - 1), 100);
+      };
+      setTimeout(() => check(attempts), 0);
+    });
   }
 
   /**
@@ -1151,6 +1207,10 @@ class VoesendorfWasteCard extends HTMLElement {
    * the tiles cannot be loaded (notice explains why).
    */
   _renderOfflineMap(container, zone, notice = "") {
+    if (this._tileWatchdog) {
+      clearTimeout(this._tileWatchdog);
+      this._tileWatchdog = null;
+    }
     const { all, focus } = this._mapPoints(zone.slug);
     const use = focus.length > 8 ? focus : all;
     if (!use.length) {
@@ -1318,6 +1378,10 @@ class VoesendorfWasteCard extends HTMLElement {
 
   /** Drop the Leaflet instance and its observer (map hidden, re-rendered or removed). */
   _disposeMap() {
+    if (this._tileWatchdog) {
+      clearTimeout(this._tileWatchdog);
+      this._tileWatchdog = null;
+    }
     if (this._resizeObserver) {
       this._resizeObserver.disconnect();
       this._resizeObserver = null;
@@ -1327,6 +1391,7 @@ class VoesendorfWasteCard extends HTMLElement {
       this._map = null;
     }
     this._tileMode = null;
+    this._viewApplied = false;
   }
 
   disconnectedCallback() {

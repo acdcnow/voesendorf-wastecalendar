@@ -4,8 +4,8 @@ Aufbereitete Müllabfuhr-Termine der Marktgemeinde **Vösendorf** (2331, Nieder�
 als ICS-Kalender, JSON-Datensatz und fertige Home-Assistant-Karte mit Karte der drei
 Abfuhrgebiete.
 
-**Aktuelle Version:** [v1.4.0](https://github.com/acdcnow/voesendorf-wastecalendar/releases/tag/v1.4.0)
-· [Änderungen / Changelog](CHANGELOG.md) · Lovelace-Karte: `voesendorf-waste-card` v1.4.0
+**Aktuelle Version:** [v1.4.1](https://github.com/acdcnow/voesendorf-wastecalendar/releases/tag/v1.4.1)
+· [Änderungen / Changelog](CHANGELOG.md) · Lovelace-Karte: `voesendorf-waste-card` v1.4.1
 
 **Offizielle Quelle:** <https://voesendorf.gv.at/buergerservice/muellkalender/>
 (Müllabfuhrplan als PDF, jeweils im Bereich „Downloads“)
@@ -312,5 +312,5 @@ calendar and verified.
   `tile_url` for your own tile server. Containers, notes and extra dates open in a popup.
 * **Built-in map card:** `packages/voesendorf_places.yaml` adds 14 located sensors (recycling
   centre, compost campaign, waste island, green-waste containers), see `docs/PLACES.md`.
-* **Version:** v1.4.0 - see [`CHANGELOG.md`](CHANGELOG.md) (German and English).
+* **Version:** v1.4.1 - see [`CHANGELOG.md`](CHANGELOG.md) (German and English).
 * **Which area is mine?** See the street lists above (`Oberort`, `Unterort`, `Seepark`).

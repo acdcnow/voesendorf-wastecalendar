@@ -1,7 +1,7 @@
 # Vösendorf Abfallkalender – Karte
 
 Eigenständige Lovelace-Karte für den Müllabfuhrkalender der Marktgemeinde Vösendorf
-(2331, Niederösterreich), **Version 1.4.0**. Enthält die Termine 2026, einen kompakten
+(2331, Niederösterreich), **Version 1.4.1**. Enthält die Termine 2026, einen kompakten
 Monatskalender (nur der aktuelle Monat, durchblätterbar) in den Farben des amtlichen PDFs,
 eine Karte der drei Abfuhrgebiete auf echten OpenStreetMap-Kacheln – geladen über den
 Kartenproxy der eigenen Home-Assistant-Instanz (`map_tiles`), mit `tile_source: offline`
@@ -28,7 +28,7 @@ Kartenkarte liegen ebenfalls im Repository – siehe `README.md` und `CHANGELOG.
 ## English
 
 Standalone Lovelace card for the waste collection calendar of the municipality of Vösendorf
-(2331, Lower Austria), **version 1.4.0**. It contains the 2026 dates, a compact month
+(2331, Lower Austria), **version 1.4.1**. It contains the 2026 dates, a compact month
 calendar (the current month only, pageable) in the colours of the official PDF, and a map of
 the three collection areas on real OpenStreetMap tiles – loaded through the map tile proxy of
 your own Home Assistant instance (`map_tiles`); with `tile_source: offline` the bundled
