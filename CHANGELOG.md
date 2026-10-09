@@ -5,6 +5,38 @@ Versionen folgen [SemVer](https://semver.org/lang/de/).
 
 ---
 
+## [2.0.1] – 2026-10-09
+
+### Deutsch
+
+**Behoben**
+
+* **Die Quelle `voesendorf_at` für `waste_collection_schedule` ließ sich nicht abrufen**
+  (`AttributeError: 'LegacyCollection' object has no attribute 't'`). Beim Sortieren der Termine
+  wurde auf `entry.t` zugegriffen. `t` ist aber nur der Name des Übergabeparameters – das Objekt
+  stellt die Abfallart als `entry.type` bereit. Ab `waste_collection_schedule` 3.x liefert der
+  Altaufruf `Collection(date=…, t=…)` sogar einen `LegacyCollection`, der gar kein `t` kennt.
+  Die Sortierung verwendet jetzt `entry.type` und funktioniert damit auf 2.x und 3.x.
+* **Der Offline-Test `tests/test_upstream_source.py`** bildet die echte Klasse nach
+  (Übergabeparameter `t`, Attribut `type`) und hätte den Fehler damit erkannt.
+
+### English
+
+**Fixed**
+
+* **The `voesendorf_at` source for `waste_collection_schedule` failed to fetch**
+  (`AttributeError: 'LegacyCollection' object has no attribute 't'`). Sorting the collections read
+  `entry.t`, but `t` is only the constructor keyword – the object exposes the waste type as
+  `entry.type`. On `waste_collection_schedule` 3.x the legacy `Collection(date=…, t=…)` call even
+  returns a `LegacyCollection`, which has no `t` attribute at all. Sorting now uses `entry.type`,
+  which works on both 2.x and 3.x.
+* **The offline test `tests/test_upstream_source.py`** now mirrors the real class (keyword `t`,
+  attribute `type`), so it catches this regression.
+
+[2.0.1]: https://github.com/acdcnow/voesendorf-wastecalendar/releases/tag/v2.0.1
+
+---
+
 ## [2.0.0] – 2026-09-24
 
 ### Deutsch
