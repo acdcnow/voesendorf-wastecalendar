@@ -128,5 +128,9 @@ class Source:
                         icon=ICON_MAP.get(waste),
                     )
                 )
-        entries.sort(key=lambda entry: (entry.date, entry.t))
+        # ``t`` is only the constructor keyword - the resulting object exposes
+        # the waste type as ``type`` (see waste_collection_schedule). On 3.x the
+        # legacy ``t=`` call even yields a ``LegacyCollection``, which has no
+        # ``t`` attribute at all, so sorting by ``entry.t`` raises AttributeError.
+        entries.sort(key=lambda entry: (entry.date, entry.type))
         return entries

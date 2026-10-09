@@ -22,8 +22,11 @@ def _stub_waste_collection_schedule() -> None:
     package.__path__ = []
 
     class Collection:
+        # Mirror waste_collection_schedule: ``t`` is the constructor keyword,
+        # but the object exposes the waste type as ``type`` (3.x returns a
+        # ``LegacyCollection`` for the legacy ``t=`` call, which has no ``t``).
         def __init__(self, date=None, t=None, icon=None):
-            self.date, self.t, self.icon = date, t, icon
+            self.date, self.type, self.icon = date, t, icon
 
     class Icons:
         GENERAL_WASTE = "general_waste"
@@ -61,7 +64,7 @@ def main() -> int:
 
         collected: dict[str, set[str]] = {}
         for entry in entries:
-            collected.setdefault(entry.t, set()).add(entry.date.isoformat())
+            collected.setdefault(entry.type, set()).add(entry.date.isoformat())
 
         print(f"=== {zone_slug} ===")
         for waste, name in WASTE_LABELS:
